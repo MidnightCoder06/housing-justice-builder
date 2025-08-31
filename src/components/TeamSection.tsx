@@ -15,6 +15,48 @@ const TeamSection = () => {
           </p>
         </div>
 
+        {/* Team Members */}
+        <div className="mb-20">
+          <h3 className="text-3xl font-bold text-center mb-12 text-primary">Meet Our Team</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="mb-4">
+                <img 
+                  src="/craig-headshot.jpeg" 
+                  alt="Craig Wise" 
+                  className="w-32 h-32 rounded-full mx-auto object-cover shadow-lg"
+                />
+              </div>
+              <h4 className="text-xl font-semibold mb-2">Craig Wise</h4>
+              <p className="text-muted-foreground">Community Organizer</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="mb-4">
+                <img 
+                  src="/HH-26612297_Brandon_Brown_1-680941e555f61.webp" 
+                  alt="Brandon Brown" 
+                  className="w-32 h-32 rounded-full mx-auto object-cover shadow-lg"
+                />
+              </div>
+              <h4 className="text-xl font-semibold mb-2">Brandon Brown</h4>
+              <p className="text-muted-foreground">Attorney</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="mb-4">
+                <img 
+                  src="/jean-leconte-headshot.jpeg" 
+                  alt="Jean Leconte" 
+                  className="w-32 h-32 rounded-full mx-auto object-cover shadow-lg"
+                />
+              </div>
+              <h4 className="text-xl font-semibold mb-2">Jean Leconte</h4>
+              <p className="text-muted-foreground">Software Engineer</p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
           <Card className="shadow-elegant hover:shadow-card transition-all duration-300">
             <CardHeader>
@@ -57,7 +99,7 @@ const TeamSection = () => {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Card className="text-center shadow-card">
             <CardHeader>
               <Users className="h-12 w-12 text-equity-gold mx-auto mb-4" />
@@ -83,30 +125,6 @@ const TeamSection = () => {
               </p>
             </CardContent>
           </Card>
-        </div>
-
-        <div className="bg-gradient-hero rounded-2xl p-8 md:p-12 text-center text-white">
-          <h3 className="text-2xl md:text-3xl font-bold mb-6">
-            Why the Camelback Fellowship?
-          </h3>
-          <div className="max-w-4xl mx-auto space-y-6">
-            <p className="text-lg leading-relaxed">
-              Our mission aligns perfectly with Camelback's focus on systemic inequities and conscious technology. 
-              We're not just building a legal tech platform - we're creating tools that directly address 
-              housing displacement affecting communities of color and low-income families.
-            </p>
-            <p className="text-lg leading-relaxed">
-              The fellowship's 16-week accelerator model provides exactly what we need: structured support 
-              to scale our impact, connect with like-minded entrepreneurs, and access the mentorship necessary 
-              to grow from early-stage to sustainable social enterprise.
-            </p>
-            <div className="bg-white/10 backdrop-blur rounded-lg p-6 mt-8">
-              <p className="text-equity-gold font-semibold text-lg">
-                "We're ready to join a community of entrepreneurs who understand that technology's highest 
-                purpose is creating equity and justice for those who need it most."
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </section>

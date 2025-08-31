@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import equityWorksLogo from "@/assets/equity-works-logo.png";
 
 const Header = () => {
   return (
@@ -7,9 +6,9 @@ const Header = () => {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <img 
-            src={equityWorksLogo} 
+            src="/equity-works-logo.png" 
             alt="Equity Works" 
-            className="h-8 w-auto"
+            className="h-12 w-auto"
           />
         </div>
         <nav className="hidden md:flex items-center space-x-8">
@@ -27,7 +26,7 @@ const Header = () => {
           </a>
         </nav>
         <Button variant="default" size="sm">
-          Contact Us
+          Request a Demo
         </Button>
       </div>
     </header>

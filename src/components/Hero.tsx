@@ -26,11 +26,15 @@ const Hero = () => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Button variant="secondary" size="lg" className="bg-equity-gold text-trust-navy hover:bg-equity-gold/90">
-              Learn About Our Impact
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <a href="#impact">
+                Learn About Our Impact
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </a>
             </Button>
-            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white/10">
-              View Our Solution
+            <Button variant="outline" size="lg" className="border-white text-white hover:bg-white/10 bg-white/20">
+              <a href="#solution">
+                View Our Solution
+              </a>
             </Button>
           </div>
           

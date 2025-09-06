@@ -18,19 +18,7 @@ const TeamSection = () => {
         {/* Team Members */}
         <div className="mb-20">
           <h3 className="text-3xl font-bold text-center mb-12 text-primary">Meet Our Team</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="mb-4">
-                <img 
-                  src="/craig-headshot.jpeg" 
-                  alt="Craig Wise" 
-                  className="w-32 h-32 rounded-full mx-auto object-cover shadow-lg"
-                />
-              </div>
-              <h4 className="text-xl font-semibold mb-2">Craig Wise</h4>
-              <p className="text-muted-foreground">Community Organizer</p>
-            </div>
-            
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             <div className="text-center">
               <div className="mb-4">
                 <img 

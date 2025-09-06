@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { Button } from "./ui/button";
 
 const Header = () => {
   return (

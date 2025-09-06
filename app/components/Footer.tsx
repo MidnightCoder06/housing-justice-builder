@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { Button } from "./ui/button";
 import { Mail, Phone, MapPin, ExternalLink } from "lucide-react";
 
 const Footer = () => {

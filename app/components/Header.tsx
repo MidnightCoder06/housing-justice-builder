@@ -26,8 +26,8 @@ const Header = () => {
             Team
           </a>
         </nav>
-        <Button variant="default" size="sm">
-          Request a Demo
+        <Button variant="default" size="sm" asChild>
+          <a href="/demo">Request a Demo</a>
         </Button>
       </div>
     </header>

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Upload, FileText, CheckCircle, AlertTriangle, Loader2, PenTool } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
@@ -26,6 +27,9 @@ interface AnalysisResult {
 export default function CamelbackAnalyzePage() {
   const [file, setFile] = useState<File | null>(null)
   const [documentText, setDocumentText] = useState('')
+  const [evictionType, setEvictionType] = useState('')
+  const [noticeType, setNoticeType] = useState('')
+  const [propertyType, setPropertyType] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   
@@ -73,7 +77,9 @@ LANDLORD NAME, Owner/Agent`
         },
         body: JSON.stringify({
           documentText,
-          fileName: file?.name || 'uploaded-document'
+          fileName: file?.name || 'uploaded-document',
+          evictionType,
+          noticeType
         }),
       })
       
@@ -127,6 +133,62 @@ LANDLORD NAME, Owner/Agent`
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div>
+                  <Label htmlFor="eviction-type">Type of Eviction</Label>
+                  <Select value={evictionType} onValueChange={(value) => {
+                    setEvictionType(value)
+                    // Reset notice type when eviction type changes
+                    if (value === 'post-foreclosure') {
+                      setNoticeType('')
+                    }
+                  }}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select eviction type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="residential">Residential</SelectItem>
+                      <SelectItem value="commercial">Commercial</SelectItem>
+                      <SelectItem value="post-foreclosure">Post-Foreclosure</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(evictionType === 'residential' || evictionType === 'commercial') && (
+                  <div>
+                    <Label htmlFor="notice-type">Type of Notice</Label>
+                    <Select value={noticeType} onValueChange={setNoticeType}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Select notice type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="non-payment">Non-payment of rent</SelectItem>
+                        <SelectItem value="breach-covenant">Breach of covenant</SelectItem>
+                        <SelectItem value="owner-occupant">Owner-occupant move-in</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="property-type">Property Type</Label>
+                  <Select value={propertyType} onValueChange={setPropertyType}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select property type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single-family">Single Family Residence</SelectItem>
+                      <SelectItem value="multi-unit">Multi-Unit Apartment</SelectItem>
+                      <SelectItem value="condominium">Condominium</SelectItem>
+                      <SelectItem value="hotel-motel">Hotel/Motel</SelectItem>
+                      <SelectItem value="dormitory">Dormitory</SelectItem>
+                      <SelectItem value="transitional">Transitional Housing</SelectItem>
+                      <SelectItem value="mobilehome">Mobilehome</SelectItem>
+                      <SelectItem value="short-term">Short-Term Rental (&lt;30d)</SelectItem>
+                      <SelectItem value="commercial">Commercial Property</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div>
                   <Label htmlFor="file-upload">Select PDF or DOCX file</Label>
                   <Input

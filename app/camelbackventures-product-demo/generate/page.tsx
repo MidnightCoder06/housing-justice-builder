@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Button } from '@/components/ui/button'
@@ -10,14 +10,19 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { PenTool, Copy, CheckCircle, Loader2, FileText } from 'lucide-react'
+import { PenTool, Copy, CheckCircle, Loader2, FileText, Plus, Minus } from 'lucide-react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
 const generateFormSchema = z.object({
-  tenantName: z.string().min(2, 'Tenant name is required'),
+  tenantNames: z.array(z.object({ name: z.string().min(2, 'Tenant name is required') })).min(1, 'At least one tenant name is required').max(5, 'Maximum 5 tenant names allowed'),
   landlordName: z.string().min(2, 'Landlord name is required'),
-  propertyAddress: z.string().min(5, 'Property address is required'),
+  addressLine1: z.string().min(5, 'Address line 1 is required'),
+  addressLine2: z.string().optional(),
+  city: z.string().min(2, 'City is required'),
+  state: z.string().min(2, 'State is required'),
+  zipCode: z.string().min(5, 'Zip code is required'),
+  propertyType: z.string().min(1, 'Property type is required'),
   noticeType: z.string().min(1, 'Notice type is required'),
   rentOwed: z.string().min(1, 'Rent owed amount is required'),
   jurisdiction: z.string().min(2, 'Jurisdiction is required'),
@@ -33,13 +38,25 @@ export default function CamelbackGeneratePage() {
   const form = useForm<GenerateFormValues>({
     resolver: zodResolver(generateFormSchema),
     defaultValues: {
-      tenantName: '',
+      tenantNames: [{ name: '' }],
       landlordName: '',
-      propertyAddress: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      propertyType: '',
       noticeType: '',
       rentOwed: '',
       jurisdiction: '',
     },
+  })
+
+  // @ts-ignore
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    // @ts-ignore
+    name: 'tenantNames',
   })
 
   const onSubmit = async (data: GenerateFormValues) => {
@@ -116,20 +133,54 @@ export default function CamelbackGeneratePage() {
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="tenantName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Tenant Name *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="John Doe" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <FormLabel>Tenant Names *</FormLabel>
+                          {fields.length < 5 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                console.log('Current fields length:', fields.length);
+                                append({ name: '' });
+                                console.log('After append fields length:', fields.length);
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Tenant
+                            </Button>
+                          )}
+                        </div>
+                        {fields.map((field, index) => (
+                          <div key={field.id} className="flex items-end gap-2 mb-2">
+                            <FormField
+                              control={form.control}
+                              name={`tenantNames.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem className="flex-1">
+                                  <FormControl>
+                                    <Input placeholder={`Tenant ${index + 1} name`} {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            {fields.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => remove(index)}
+                                className="mb-2"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                       
                       <FormField
                         control={form.control}
@@ -146,15 +197,31 @@ export default function CamelbackGeneratePage() {
                       />
                     </div>
 
+
                     <FormField
                       control={form.control}
-                      name="propertyAddress"
+                      name="propertyType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Property Address *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="123 Main St, Apt 2B, San Francisco, CA 94102" {...field} />
-                          </FormControl>
+                          <FormLabel>Property Type *</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select property type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="single-family">Single Family Residence</SelectItem>
+                              <SelectItem value="multi-unit">Multi-Unit Apartment</SelectItem>
+                              <SelectItem value="condominium">Condominium</SelectItem>
+                              <SelectItem value="hotel-motel">Hotel/Motel</SelectItem>
+                              <SelectItem value="dormitory">Dormitory</SelectItem>
+                              <SelectItem value="transitional">Transitional Housing</SelectItem>
+                              <SelectItem value="mobilehome">Mobilehome</SelectItem>
+                              <SelectItem value="short-term">Short-Term Rental (&lt;30d)</SelectItem>
+                              <SelectItem value="commercial">Commercial Property</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -174,11 +241,9 @@ export default function CamelbackGeneratePage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="3-day-pay-or-quit">3-Day Pay or Quit</SelectItem>
-                                <SelectItem value="30-day-notice">30-Day Notice</SelectItem>
-                                <SelectItem value="60-day-notice">60-Day Notice</SelectItem>
-                                <SelectItem value="cure-or-quit">Cure or Quit</SelectItem>
-                                <SelectItem value="unconditional-quit">Unconditional Quit</SelectItem>
+                                <SelectItem value="non-payment">Non-payment of rent</SelectItem>
+                                <SelectItem value="breach-covenant">Breach of covenant</SelectItem>
+                                <SelectItem value="owner-occupant">Owner-occupant move-in</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -199,6 +264,85 @@ export default function CamelbackGeneratePage() {
                           </FormItem>
                         )}
                       />
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">Property Address</h3>
+                        <div className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="addressLine1"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Address Line 1 *</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="123 Main Street" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                      
+                          <FormField
+                            control={form.control}
+                            name="addressLine2"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Address Line 2</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Apt 2B, Unit 5, etc. (optional)" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="city"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>City *</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="San Francisco" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name="state"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>State *</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="CA" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name="zipCode"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Zip Code *</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="94102" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <FormField

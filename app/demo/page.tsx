@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -34,12 +34,14 @@ export default function DemoPage() {
     },
   })
 
+  const [isSubmitted, setIsSubmitted] = useState(false)
+
   const onSubmit = async (data: DemoFormValues) => {
-    // Store user info in localStorage for the demo experience
+    // Store user info in localStorage 
     localStorage.setItem('demoUser', JSON.stringify(data))
     
-    // Navigate to the demo experience
-    router.push('/demo/analyze')
+    // Show success message instead of redirecting
+    setIsSubmitted(true)
   }
 
   return (
@@ -66,6 +68,21 @@ export default function DemoPage() {
               </p>
             </CardHeader>
             <CardContent>
+              {isSubmitted ? (
+                <div className="text-center py-8">
+                  <div className="mb-4">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold mb-3 text-primary">Request Submitted!</h3>
+                  <p className="text-muted-foreground">
+                    Check your inbox for communication from us to schedule a demo meeting.
+                  </p>
+                </div>
+              ) : (
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -131,10 +148,11 @@ export default function DemoPage() {
                     size="lg"
                     disabled={form.formState.isSubmitting}
                   >
-                    {form.formState.isSubmitting ? 'Starting Demo...' : 'Start Demo Experience'}
+                    {form.formState.isSubmitting ? 'Submitting...' : 'Complete Request'}
                   </Button>
                 </form>
               </Form>
+              )}
             </CardContent>
           </Card>
         </div>

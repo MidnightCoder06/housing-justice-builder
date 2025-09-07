@@ -20,13 +20,12 @@ const Hero = () => {
           </h1>
           
           <p className="text-xl md:text-2xl mb-8 text-gray-200 leading-relaxed">
-            AI-powered legal technology that empowers tenants and their advocates 
-            to defend against evictions and build housing stability.
+            Making eviction fairer, faster, and legally compliant—for everyone involved.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <Button variant="secondary" size="lg" className="bg-equity-gold text-trust-navy hover:bg-equity-gold/90">
-              <a href="#impact">
+            <Button variant="secondary" size="lg" className="bg-equity-gold text-trust-navy hover:bg-equity-gold/90" asChild>
+              <a href="#impact" className="flex items-center">
                 Learn About Our Impact
                 <ArrowRight className="ml-2 h-5 w-5" />
               </a>

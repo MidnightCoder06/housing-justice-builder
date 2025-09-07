@@ -96,7 +96,7 @@ const TeamSection = () => {
             <CardContent>
               <p className="text-muted-foreground">
                 We build with our communities, not for them. Every feature is tested and refined 
-                through feedback from attorneys, tenants, and property professionals.
+                through feedback from attorneys, tenants, and real estate professionals.
               </p>
             </CardContent>
           </Card>
@@ -108,7 +108,7 @@ const TeamSection = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                We leverage AI and technology not just for efficiency, but specifically to address 
+                We leverage AI and technology not just for efficiency and compliance, but specifically to address 
                 systemic inequities in housing and legal access.
               </p>
             </CardContent>

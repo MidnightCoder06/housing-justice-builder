@@ -69,23 +69,6 @@ const ProblemSection = () => {
           </Card>
         </div>
 
-        <div className="bg-primary/5 rounded-2xl p-8 md:p-12">
-          <div className="max-w-3xl mx-auto text-center">
-            <h3 className="text-2xl md:text-3xl font-bold mb-6 text-primary">
-              Our Team's Personal Connection
-            </h3>
-            <p className="text-lg text-muted-foreground leading-relaxed mb-6">
-              One of our co-founders is a real estate lawyer who has witnessed firsthand how 
-              overburdened pro bono attorneys struggle with eviction defense demand. Another 
-              co-founder grew up in a low-income community where evictions were a constant reality, 
-              watching neighbors displaced and families destabilized.
-            </p>
-            <p className="text-lg font-medium text-primary">
-              These experiences revealed the urgent need for scalable tools that can help 
-              both attorneys and tenants level the playing field.
-            </p>
-          </div>
-        </div>
       </div>
     </section>
   );

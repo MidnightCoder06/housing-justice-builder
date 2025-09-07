@@ -50,7 +50,7 @@ const ImpactSection = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground text-sm">
-                Batch processing and automated workflows reduce attorney workload bottlenecks
+                Cost-effective processing and automated workflows reduce attorney workload bottlenecks
               </p>
             </CardContent>
           </Card>

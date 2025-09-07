@@ -9,8 +9,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           <div className="space-y-4">
             <p className="text-gray-300 text-sm leading-relaxed">
-              AI-powered legal technology leveling the playing field in housing justice. 
-              Empowering tenants and attorneys to defend against evictions.
+              Making eviction fairer, faster, and legally compliant—for everyone involved.
             </p>
           </div>
 

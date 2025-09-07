@@ -5,15 +5,6 @@ const SolutionSection = () => {
   return (
     <section id="solution" className="py-20 bg-background">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 text-primary">
-            AI-Powered Legal Technology for Housing Justice
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Our platform addresses eviction notice compliance issues that reset entire legal processes, 
-            costing thousands in delays and lost time while helping level the playing field.
-          </p>
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           <Card className="shadow-card hover:shadow-elegant transition-all duration-300">
@@ -64,53 +55,13 @@ const SolutionSection = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="h-5 w-5 text-equity-gold" />
-                  <span className="text-sm">Batch processing for law firms</span>
+                  <span className="text-sm">Cost-effective processing for law firms</span>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          <Card className="text-center shadow-card">
-            <CardHeader>
-              <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
-              <CardTitle>Tenant Protection</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Early intervention tools for tenants at the first sign of trouble, 
-                before ever reaching court.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center shadow-card">
-            <CardHeader>
-              <Target className="h-12 w-12 text-equity-gold mx-auto mb-4" />
-              <CardTitle>Precise Compliance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Modular compliance logic for complex jurisdictions like Los Angeles 
-                and San Francisco with layered ordinances.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center shadow-card">
-            <CardHeader>
-              <Users className="h-12 w-12 text-impact-gray mx-auto mb-4" />
-              <CardTitle>Attorney Support</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Reduces paperwork bottlenecks, allowing pro bono attorneys 
-                to handle more eviction defense cases effectively.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
 
         <div className="bg-gradient-accent rounded-2xl p-8 md:p-12 text-center">
           <h3 className="text-2xl md:text-3xl font-bold mb-6 text-trust-navy">

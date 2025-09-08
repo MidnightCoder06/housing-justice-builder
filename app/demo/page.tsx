@@ -15,7 +15,7 @@ import Footer from '@/components/Footer'
 const demoFormSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
+  companyName: z.string().optional(),
   companyEmail: z.string().email('Please enter a valid email address'),
 })
 
@@ -119,7 +119,7 @@ export default function DemoPage() {
                     name="companyName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Company Name *</FormLabel>
+                        <FormLabel>Company Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter your company name" {...field} />
                         </FormControl>

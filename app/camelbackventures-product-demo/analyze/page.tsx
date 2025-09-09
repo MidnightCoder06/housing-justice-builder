@@ -128,7 +128,12 @@ LANDLORD NAME, Owner/Agent`
   }
 
   const handleAnalyze = async () => {
-    if (!file) return
+    // Check if we have the required files based on eviction type
+    if (evictionType === 'commercial') {
+      if (!commercialLeaseFile || !sampleNoticeFile) return
+    } else {
+      if (!file) return
+    }
     
     setIsAnalyzing(true)
     
@@ -139,7 +144,9 @@ LANDLORD NAME, Owner/Agent`
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          fileName: file?.name || 'uploaded-document',
+          fileName: evictionType === 'commercial' 
+            ? `${commercialLeaseFile?.name || 'lease'} + ${sampleNoticeFile?.name || 'notice'}`
+            : file?.name || 'uploaded-document',
           evictionType,
           noticeType
         }),

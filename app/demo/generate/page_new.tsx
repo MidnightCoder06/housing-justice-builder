@@ -445,6 +445,29 @@ export default function GeneratePage() {
                   </>
                 )}
 
+                <div>
+                  <Label htmlFor="landlord-name">Landlord Name</Label>
+                  <Input
+                    id="landlord-name"
+                    type="text"
+                    placeholder="Landlord or property manager name"
+                    value={landlordName}
+                    onChange={(e) => setLandlordName(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="rent-owed">Rent Owed</Label>
+                  <Input
+                    id="rent-owed"
+                    type="text"
+                    placeholder="$0.00"
+                    value={rentOwed}
+                    onChange={(e) => setRentOwed(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
 
                 <Button 
                   onClick={() => {

@@ -10,9 +10,8 @@ import { PenTool, Plus, Minus, Loader2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import DemoNavigation from '../components/DemoNavigation'
 
-export default function GeneratePage() {
+export default function CamelbackGeneratePage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedNotice, setGeneratedNotice] = useState('')
   const [copied, setCopied] = useState(false)
@@ -92,7 +91,18 @@ export default function GeneratePage() {
       <Header />
       <main className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <DemoNavigation />
+          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-8">
+            <div className="flex items-center justify-center gap-8">
+              <a href="/camelbackventures-product-demo/analyze" className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
+                <PenTool className="h-4 w-4" />
+                Analyze Notice
+              </a>
+              <span className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg">
+                <PenTool className="h-4 w-4" />
+                Generate Notice
+              </span>
+            </div>
+          </div>
           
           <div className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-4 text-primary">
@@ -445,6 +455,29 @@ export default function GeneratePage() {
                   </>
                 )}
 
+                <div>
+                  <Label htmlFor="landlord-name">Landlord Name</Label>
+                  <Input
+                    id="landlord-name"
+                    type="text"
+                    placeholder="Landlord or property manager name"
+                    value={landlordName}
+                    onChange={(e) => setLandlordName(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="rent-owed">Rent Owed</Label>
+                  <Input
+                    id="rent-owed"
+                    type="text"
+                    placeholder="$0.00"
+                    value={rentOwed}
+                    onChange={(e) => setRentOwed(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
 
                 <Button 
                   onClick={() => {

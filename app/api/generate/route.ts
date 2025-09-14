@@ -103,7 +103,11 @@ Print Name
 
 Note: This is a computer-generated notice template. Please review all applicable local, state, and federal laws before serving. Consider consulting with a qualified attorney to ensure compliance with all legal requirements in your jurisdiction.`
 
-    return NextResponse.json({ notice: mockNotice })
+    return NextResponse.json({ 
+      pdfPath: "/sample_generate_notice.pdf",
+      fileName: `notice-${new Date().toISOString().split('T')[0]}.pdf`,
+      notice: mockNotice  // Keep for backward compatibility if needed
+    })
   } catch (error) {
     console.error('Generation API error:', error)
     return NextResponse.json(

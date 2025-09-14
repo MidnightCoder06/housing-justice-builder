@@ -14,6 +14,8 @@ import Footer from '@/components/Footer'
 export default function CamelbackGeneratePage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedNotice, setGeneratedNotice] = useState('')
+  const [generatedPDF, setGeneratedPDF] = useState('')
+  const [pdfFileName, setPdfFileName] = useState('')
   const [copied, setCopied] = useState(false)
   
   // Form state variables matching Analyze Notice
@@ -83,6 +85,17 @@ export default function CamelbackGeneratePage() {
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       console.error('Failed to copy text: ', err)
+    }
+  }
+
+  const handleDownloadPDF = () => {
+    if (generatedPDF) {
+      const link = document.createElement('a')
+      link.href = generatedPDF
+      link.download = pdfFileName || 'notice.pdf'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     }
   }
 
@@ -489,6 +502,8 @@ export default function CamelbackGeneratePage() {
                     .then(response => response.json())
                     .then(result => {
                       setGeneratedNotice(result.notice)
+                      setGeneratedPDF(result.pdfPath)
+                      setPdfFileName(result.fileName)
                       setIsGenerating(false)
                     })
                     .catch(error => {
@@ -517,32 +532,40 @@ export default function CamelbackGeneratePage() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Generated Notice</span>
-                  {generatedNotice && (
+                  {generatedPDF && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleCopy}
-                      disabled={copied}
+                      onClick={handleDownloadPDF}
                     >
-                      {copied ? 'Copied!' : 'Copy'}
+                      Download PDF
                     </Button>
                   )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {generatedNotice ? (
-                  <Textarea
-                    value={generatedNotice}
-                    readOnly
-                    className="min-h-[400px] font-mono text-sm"
-                    placeholder="Generated notice will appear here..."
-                  />
+                {generatedPDF ? (
+                  <div className="space-y-4">
+                    <iframe
+                      src={generatedPDF}
+                      className="w-full h-[600px] border border-gray-300 rounded"
+                      title="Generated Notice PDF"
+                    />
+                    <div className="flex justify-center">
+                      <Button
+                        onClick={handleDownloadPDF}
+                        className="w-full max-w-xs"
+                      >
+                        Download PDF
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-muted-foreground/25 rounded-lg min-h-[400px]">
                     <PenTool className="h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">Generated Notice</h3>
                     <p className="text-muted-foreground">
-                      Fill out the form and click "Generate Notice" to create a compliant housing notice
+                      Fill out the form and click "Generate Notice" to create a compliant housing notice PDF
                     </p>
                   </div>
                 )}

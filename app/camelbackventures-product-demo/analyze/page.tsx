@@ -17,10 +17,12 @@ interface AnalysisResult {
     issue: string
     severity: 'high' | 'medium' | 'low'
     description: string
+    source: string
   }>
   compliantElements: Array<{
     element: string
     description: string
+    source: string
   }>
 }
 
@@ -430,7 +432,7 @@ LANDLORD NAME, Owner/Agent`
                         <SelectItem value="hotel-motel">Hotel/Motel</SelectItem>
                         <SelectItem value="dormitory">Dormitory</SelectItem>
                         <SelectItem value="transitional">Transitional Housing</SelectItem>
-                        <SelectItem value="mobilehome">Mobilehome</SelectItem>
+                        <SelectItem value="mobilehome">Mobile Home</SelectItem>
                         <SelectItem value="short-term">Short-Term Rental (&lt;30d)</SelectItem>
                       </SelectContent>
                     </Select>
@@ -642,7 +644,10 @@ LANDLORD NAME, Owner/Agent`
                                   {defect.severity}
                                 </span>
                               </div>
-                              <p className="text-sm text-muted-foreground">{defect.description}</p>
+                              <p className="text-sm text-muted-foreground mb-2">{defect.description}</p>
+                              <p className="text-xs text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded">
+                                Source: {defect.source}
+                              </p>
                             </div>
                           ))}
                         </div>
@@ -663,7 +668,10 @@ LANDLORD NAME, Owner/Agent`
                         {analysisResult.compliantElements.map((element, index) => (
                           <div key={index} className="border-l-4 border-green-500 pl-4">
                             <span className="font-medium">{element.element}</span>
-                            <p className="text-sm text-muted-foreground">{element.description}</p>
+                            <p className="text-sm text-muted-foreground mb-2">{element.description}</p>
+                            <p className="text-xs text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded">
+                              Source: {element.source}
+                            </p>
                           </div>
                         ))}
                       </div>

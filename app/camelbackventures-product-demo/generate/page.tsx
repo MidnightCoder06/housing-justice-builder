@@ -217,7 +217,7 @@ export default function CamelbackGeneratePage() {
                               <SelectItem value="hotel-motel">Hotel/Motel</SelectItem>
                               <SelectItem value="dormitory">Dormitory</SelectItem>
                               <SelectItem value="transitional">Transitional Housing</SelectItem>
-                              <SelectItem value="mobilehome">Mobilehome</SelectItem>
+                              <SelectItem value="mobilehome">Mobile Home</SelectItem>
                               <SelectItem value="short-term">Short-Term Rental (&lt;30d)</SelectItem>
                               <SelectItem value="commercial">Commercial Property</SelectItem>
                             </SelectContent>

@@ -181,7 +181,7 @@ LANDLORD NAME, Owner/Agent`
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className={`grid grid-cols-1 gap-8 ${noticeType === 'non-payment' ? '' : 'lg:grid-cols-2'}`}>
             {/* Upload Section */}
             <Card className="h-fit">
               <CardHeader>
@@ -287,7 +287,7 @@ LANDLORD NAME, Owner/Agent`
                 )}
 
                 {noticeType === 'non-payment' && (
-                  <div className="space-y-4 p-6 border border-gray-300 rounded-lg bg-gray-50 w-full">
+                  <div className="space-y-4 p-6 border border-gray-300 rounded-lg bg-gray-50 w-full max-w-none">
                     <h3 className="text-lg font-medium text-gray-900">Outstanding Rent Balance</h3>
                     
                     <div>
@@ -330,7 +330,7 @@ LANDLORD NAME, Owner/Agent`
                       
                       {monthlyBalances.map((balance, index) => (
                         <div key={index} className="space-y-2">
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end w-full">
                             <div>
                               <Label htmlFor={`month-${index}`}>Month</Label>
                               <Input

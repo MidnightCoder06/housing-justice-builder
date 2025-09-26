@@ -57,6 +57,14 @@ const Footer = () => {
             <div className="text-sm text-gray-300">
               © 2025 Equity Works. Building technology for housing justice.
             </div>
+            <div className="flex space-x-6 text-sm text-gray-300">
+              <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-equity-gold transition-colors">
+                Terms and Conditions
+              </a>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-equity-gold transition-colors">
+                Privacy Policy
+              </a>
+            </div>
           </div>
         </div>
       </div>

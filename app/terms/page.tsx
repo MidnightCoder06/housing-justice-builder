@@ -107,7 +107,7 @@ export default function TermsPage() {
                 <div className="mt-8 p-4 bg-gray-50 rounded-lg">
                   <p className="text-gray-700">
                     <strong>Contact Information:</strong><br />
-                    <strong>Email:</strong> hello@equityworks.tech
+                    <strong>Email:</strong> support@equityworks.tech
                   </p>
                 </div>
               </div>

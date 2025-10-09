@@ -18,29 +18,29 @@ const TeamSection = () => {
         {/* Team Members */}
         <div className="mb-20">
           <h3 className="text-3xl font-bold text-center mb-12 text-primary">Meet Our Team</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            <div className="text-center">
+          <div className="flex flex-col md:flex-row justify-center items-start gap-16 max-w-5xl mx-auto">
+            <div className="flex flex-col items-center text-center flex-1 max-w-sm">
               <div className="mb-4">
                 <img 
                   src="/HH-26612297_Brandon_Brown_1-680941e555f61.webp" 
                   alt="Brandon Brown" 
-                  className="w-32 h-32 rounded-full mx-auto object-cover shadow-lg"
+                  className="w-32 h-32 rounded-full object-cover shadow-lg"
                 />
               </div>
               <h4 className="text-xl font-semibold mb-2">Brandon Brown</h4>
-              <p className="text-muted-foreground">Attorney</p>
+              <p className="text-muted-foreground text-center leading-relaxed">Partner, Raintree Law PC | Real Estate Attorney</p>
             </div>
             
-            <div className="text-center">
+            <div className="flex flex-col items-center text-center flex-1 max-w-sm">
               <div className="mb-4">
                 <img 
                   src="/jean-leconte-headshot.jpeg" 
                   alt="Jean Leconte" 
-                  className="w-32 h-32 rounded-full mx-auto object-cover shadow-lg"
+                  className="w-32 h-32 rounded-full object-cover shadow-lg"
                 />
               </div>
               <h4 className="text-xl font-semibold mb-2">Jean Leconte</h4>
-              <p className="text-muted-foreground">Software Engineer</p>
+              <p className="text-muted-foreground text-center leading-relaxed">Software Engineer (ex-Google, Microsoft, Amazon, Meta) | Author</p>
             </div>
           </div>
         </div>

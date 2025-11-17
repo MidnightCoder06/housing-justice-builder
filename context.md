@@ -50,6 +50,11 @@
 - **Type-safe development** - Full TypeScript integration
 - **Monorepo ready** - Perfect for adding backend services
 
+## Internal Routes
+- **/admin-knowledgebase-addition** - Admin interface for uploading PDF documents into the knowledge base
+- **/camelbackventures-product-demo** - Demo workspace with analyze and generate tools tailored for Camelback Ventures Fellowship application
+    * The Analyze flow uploads the selected documents via the OpenAI File API with a 24-hour expiry before triggering analysis
+
 ## Migration Benefits
 - **Better SEO** - Server-side rendering and static generation
 - **Full-Stack TypeScript** - Seamless frontend/backend development

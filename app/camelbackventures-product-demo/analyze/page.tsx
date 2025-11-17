@@ -51,6 +51,32 @@ export default function CamelbackAnalyzePage() {
   
   const { register, handleSubmit, setValue } = useForm()
 
+  const uploadDocumentToOpenAI = async (document: File) => {
+    const formData = new FormData()
+    formData.append('file', document)
+    formData.append('purpose', 'assistants')
+    formData.append('expiresInDays', '1')
+
+    const response = await fetch('/api/file-upload', {
+      method: 'POST',
+      body: formData,
+    })
+
+    const data = await response.json().catch(() => null)
+
+    if (data) {
+      console.log('OpenAI file upload response', data)
+    }
+
+    if (!response.ok || !data) {
+      throw new Error(
+        (data && data.error) || 'Unable to prepare document for analysis.'
+      )
+    }
+
+    return data.fileId as string
+  }
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0]
     if (uploadedFile) {
@@ -140,6 +166,22 @@ LANDLORD NAME, Owner/Agent`
     setIsAnalyzing(true)
     
     try {
+      const uploadedFileIds: string[] = []
+
+      if (evictionType === 'commercial') {
+        if (commercialLeaseFile) {
+          const leaseUploadId = await uploadDocumentToOpenAI(commercialLeaseFile)
+          uploadedFileIds.push(leaseUploadId)
+        }
+        if (sampleNoticeFile) {
+          const noticeUploadId = await uploadDocumentToOpenAI(sampleNoticeFile)
+          uploadedFileIds.push(noticeUploadId)
+        }
+      } else if (file) {
+        const uploadedId = await uploadDocumentToOpenAI(file)
+        uploadedFileIds.push(uploadedId)
+      }
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
@@ -150,11 +192,13 @@ LANDLORD NAME, Owner/Agent`
             ? `${commercialLeaseFile?.name || 'lease'} + ${sampleNoticeFile?.name || 'notice'}`
             : file?.name || 'uploaded-document',
           evictionType,
-          noticeType
+          noticeType,
+          uploadedFileIds,
         }),
       })
       
       const result = await response.json()
+      console.log('Analyze API response', result)
       setAnalysisResult(result)
     } catch (error) {
       console.error('Analysis error:', error)

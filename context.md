@@ -55,6 +55,9 @@
 - **/camelbackventures-product-demo** - Demo workspace with analyze and generate tools tailored for Camelback Ventures Fellowship application
     * The Analyze flow uploads the selected documents via the OpenAI File API with a 24-hour expiry before triggering analysis
 
+## OpenAI APIs Used
+- **Files API** - The Analyze workflow uploads notice documents to OpenAI with a 24-hour expiration window so they can be referenced later for LLM analysis while keeping storage ephemeral.
+
 ## Migration Benefits
 - **Better SEO** - Server-side rendering and static generation
 - **Full-Stack TypeScript** - Seamless frontend/backend development
@@ -72,3 +75,9 @@
 - Theme support for light/dark modes
 - SEO optimized with proper meta tags
 - Performance optimized with Next.js features 
+
+
+### Next update for Brandon
+* Login button (so we can store files by user) on the home page opens a form -> proceeds to the analysis / generation page
+* A pdf is actually generated
+* There is a download button that actually works

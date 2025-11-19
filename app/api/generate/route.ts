@@ -1,4 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createRequire } from 'module'
+
+const require = createRequire(import.meta.url)
+const PDFKitModule = require('pdfkit/js/pdfkit.standalone.js')
+const PDFDocument = PDFKitModule.default ?? PDFKitModule
+
+interface NoticePdfPayload {
+  title: string
+  tenantName: string
+  landlordName: string
+  propertyAddress: string
+  jurisdiction: string
+  noticeBody: string
+  currentDate: string
+}
+
+const buildNoticePdf = (payload: NoticePdfPayload) => {
+  return new Promise<Buffer>((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'LETTER', margin: 50 })
+    const chunks: Buffer[] = []
+
+    doc.on('data', (chunk) => {
+      chunks.push(chunk as Buffer)
+    })
+    doc.on('end', () => {
+      resolve(Buffer.concat(chunks))
+    })
+    doc.on('error', reject)
+
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(18)
+      .text(payload.title, { align: 'center' })
+
+    doc.moveDown()
+    doc.font('Helvetica').fontSize(11)
+    doc.text(`Date: ${payload.currentDate}`)
+    doc.text(`Tenant: ${payload.tenantName || 'N/A'}`)
+    doc.text(`Landlord: ${payload.landlordName || 'N/A'}`)
+    doc.text(`Property Address: ${payload.propertyAddress || 'N/A'}`)
+    doc.text(`Jurisdiction: ${payload.jurisdiction || 'N/A'}`)
+
+    doc.moveDown()
+    doc.font('Helvetica-Bold').text('Notice Details', { underline: true })
+    doc.moveDown(0.5)
+    doc.font('Helvetica').fontSize(11)
+
+    const paragraphs = payload.noticeBody.split('\n\n')
+    paragraphs.forEach((paragraph) => {
+      const trimmed = paragraph.trim()
+      if (trimmed.length > 0) {
+        doc.text(trimmed, { align: 'left' })
+        doc.moveDown(0.75)
+      }
+    })
+
+    doc.end()
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -103,8 +162,21 @@ Print Name
 
 Note: This is a computer-generated notice template. Please review all applicable local, state, and federal laws before serving. Consider consulting with a qualified attorney to ensure compliance with all legal requirements in your jurisdiction.`
 
+    const pdfBuffer = await buildNoticePdf({
+      title: noticeTitle,
+      tenantName,
+      landlordName,
+      propertyAddress,
+      jurisdiction,
+      noticeBody: mockNotice,
+      currentDate,
+    })
+
+    const base64Pdf = pdfBuffer.toString('base64')
+    const pdfDataUrl = `data:application/pdf;base64,${base64Pdf}`
+
     return NextResponse.json({ 
-      pdfPath: "/sample_generate_notice.pdf",
+      pdfDataUrl,
       fileName: `notice-${new Date().toISOString().split('T')[0]}.pdf`,
       notice: mockNotice  // Keep for backward compatibility if needed
     })

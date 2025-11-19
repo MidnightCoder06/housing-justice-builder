@@ -502,7 +502,7 @@ export default function CamelbackGeneratePage() {
                     .then(response => response.json())
                     .then(result => {
                       setGeneratedNotice(result.notice)
-                      setGeneratedPDF(result.pdfPath)
+                      setGeneratedPDF(result.pdfDataUrl)
                       setPdfFileName(result.fileName)
                       setIsGenerating(false)
                     })

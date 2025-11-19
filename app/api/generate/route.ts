@@ -1,9 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRequire } from 'module'
+import OpenAI from 'openai'
+import { toFile } from 'openai/uploads'
+import { Pool } from 'pg'
 
 const require = createRequire(import.meta.url)
 const PDFKitModule = require('pdfkit/js/pdfkit.standalone.js')
 const PDFDocument = PDFKitModule.default ?? PDFKitModule
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
+
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+    })
+  : null
+
+let tablesInitialized = false
+
+const ensureTables = async () => {
+  if (!pool || tablesInitialized) return
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_vector_stores (
+      user_id TEXT PRIMARY KEY,
+      vector_store_id TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `)
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notice_files (
+      file_id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      vector_store_id TEXT,
+      file_name TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `)
+  tablesInitialized = true
+}
+
+const getOrCreateVectorStore = async (userId: string) => {
+  if (!pool || !openai.apiKey) return null
+  await ensureTables()
+
+  const existing = await pool.query(
+    'SELECT vector_store_id FROM user_vector_stores WHERE user_id = $1 LIMIT 1',
+    [userId]
+  )
+
+  if (existing.rows.length > 0) {
+    return existing.rows[0].vector_store_id as string
+  }
+
+  const vectorStore = await openai.vectorStores.create({
+    name: `notice-store-${userId}`,
+  })
+
+  await pool.query(
+    'INSERT INTO user_vector_stores (user_id, vector_store_id) VALUES ($1, $2)',
+    [userId, vectorStore.id]
+  )
+
+  return vectorStore.id
+}
+
+const recordNoticeFile = async (
+  userId: string,
+  fileId: string,
+  vectorStoreId: string | null,
+  fileName: string
+) => {
+  if (!pool) return
+  await ensureTables()
+
+  await pool.query(
+    `
+      INSERT INTO notice_files (file_id, user_id, vector_store_id, file_name)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (file_id)
+      DO UPDATE SET user_id = EXCLUDED.user_id,
+                    vector_store_id = EXCLUDED.vector_store_id,
+                    file_name = EXCLUDED.file_name
+    `,
+    [fileId, userId, vectorStoreId, fileName]
+  )
+}
 
 interface NoticePdfPayload {
   title: string
@@ -61,6 +145,13 @@ const buildNoticePdf = (payload: NoticePdfPayload) => {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OPENAI_API_KEY is not configured' },
+        { status: 500 }
+      )
+    }
+
     const { tenantName, landlordName, propertyAddress, noticeType, rentOwed, jurisdiction } = await request.json()
 
     // Simulate processing time
@@ -162,6 +253,8 @@ Print Name
 
 Note: This is a computer-generated notice template. Please review all applicable local, state, and federal laws before serving. Consider consulting with a qualified attorney to ensure compliance with all legal requirements in your jurisdiction.`
 
+    const noticeFileName = `notice-${new Date().toISOString().split('T')[0]}.pdf`
+
     const pdfBuffer = await buildNoticePdf({
       title: noticeTitle,
       tenantName,
@@ -172,13 +265,48 @@ Note: This is a computer-generated notice template. Please review all applicable
       currentDate,
     })
 
+    let uploadedFileId: string | null = null
+    let vectorStoreId: string | null = null
+    const userId = 'abc'
+
+    try {
+      const pdfFile = await toFile(pdfBuffer, noticeFileName, {
+        type: 'application/pdf',
+      })
+      const uploadedFile = await openai.files.create({
+        file: pdfFile,
+        purpose: 'assistants',
+      })
+      uploadedFileId = uploadedFile.id
+      vectorStoreId = await getOrCreateVectorStore(userId)
+      if (vectorStoreId) {
+        await openai.vectorStores.files.create(vectorStoreId, {
+          file_id: uploadedFile.id,
+        })
+      }
+
+      await recordNoticeFile(userId, uploadedFile.id, vectorStoreId, noticeFileName)
+
+      console.log('OpenAI storage complete', {
+        fileId: uploadedFile.id,
+        vectorStoreId,
+      })
+    } catch (storageError) {
+      console.error('Failed to store notice metadata:', storageError)
+    }
+
     const base64Pdf = pdfBuffer.toString('base64')
     const pdfDataUrl = `data:application/pdf;base64,${base64Pdf}`
 
     return NextResponse.json({ 
       pdfDataUrl,
-      fileName: `notice-${new Date().toISOString().split('T')[0]}.pdf`,
-      notice: mockNotice  // Keep for backward compatibility if needed
+      fileName: noticeFileName,
+      notice: mockNotice,  // Keep for backward compatibility if needed
+      metadata: {
+        fileId: uploadedFileId,
+        vectorStoreId,
+        userId,
+      },
     })
   } catch (error) {
     console.error('Generation API error:', error)

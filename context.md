@@ -55,8 +55,13 @@
 - **/camelbackventures-product-demo** - Demo workspace with analyze and generate tools tailored for Camelback Ventures Fellowship application
     * The Analyze flow uploads the selected documents via the OpenAI File API with a 24-hour expiry before triggering analysis
 
-## OpenAI APIs Used
+## OpenAI Software Used
 - **Files API** - The Analyze workflow uploads notice documents to OpenAI with a 24-hour expiration window so they can be referenced later for LLM analysis while keeping storage ephemeral.
+- **Vector Stores** - Generated notices are persisted in per-user vector stores so future LLM runs can reference prior documents.
+
+## Third-Party Libraries
+- **pdfkit** - Generates the dynamic notice PDFs (see https://www.npmjs.com/package/pdfkit)
+- **pg** - Node.js PostgreSQL client used to persist OpenAI file + vector store metadata in Neon
 
 ## Migration Benefits
 - **Better SEO** - Server-side rendering and static generation

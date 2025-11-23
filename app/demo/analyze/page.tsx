@@ -32,6 +32,7 @@ export default function AnalyzePage() {
   const [commercialLeaseFile, setCommercialLeaseFile] = useState<File | null>(null)
   const [sampleNoticeFile, setSampleNoticeFile] = useState<File | null>(null)
   const [evictionType, setEvictionType] = useState('')
+  const [ownerOccupied, setOwnerOccupied] = useState('')
   const [noticeType, setNoticeType] = useState('')
   const [propertyType, setPropertyType] = useState('')
   const [monthlyRentDue, setMonthlyRentDue] = useState('')
@@ -151,6 +152,7 @@ LANDLORD NAME, Owner/Agent`
             ? `${commercialLeaseFile?.name || 'lease'} + ${sampleNoticeFile?.name || 'notice'}`
             : file?.name || 'uploaded-document',
           evictionType,
+          ownerOccupied,
           noticeType
         }),
       })
@@ -248,6 +250,21 @@ LANDLORD NAME, Owner/Agent`
                     </div>
                   ))}
                 </div>
+
+                {evictionType === 'residential' && (
+                  <div>
+                    <Label htmlFor="owner-occupied">Owner Occupied?</Label>
+                    <Select value={ownerOccupied} onValueChange={setOwnerOccupied}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Select option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {(evictionType === 'residential' || evictionType === 'commercial') && (
                   <div>

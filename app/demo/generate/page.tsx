@@ -21,6 +21,7 @@ export default function GeneratePage() {
   
   // Form state variables matching Analyze Notice
   const [evictionType, setEvictionType] = useState('')
+  const [ownerOccupied, setOwnerOccupied] = useState('')
   const [noticeType, setNoticeType] = useState('')
   const [situationDescription, setSituationDescription] = useState('')
   const [tenantNames, setTenantNames] = useState([{ name: '' }])
@@ -183,6 +184,21 @@ export default function GeneratePage() {
                     </div>
                   ))}
                 </div>
+
+                {evictionType === 'residential' && (
+                  <div>
+                    <Label htmlFor="owner-occupied">Owner Occupied?</Label>
+                    <Select value={ownerOccupied} onValueChange={setOwnerOccupied}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="Select option" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="yes">Yes</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {(evictionType === 'residential' || evictionType === 'commercial') && (
                   <div>
@@ -463,6 +479,7 @@ export default function GeneratePage() {
                   onClick={() => {
                     const formData = {
                       evictionType,
+                      ownerOccupied,
                       tenantNames,
                       noticeType,
                       situationDescription,

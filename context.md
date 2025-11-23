@@ -1,9 +1,3 @@
-# Equity Works - Frontend Technology Stack
-
-## Core Framework
-- **Next.js 15.1.0** - Full-stack React framework with app router
-- **React 18.3.1** - Main frontend JavaScript library  
-- **TypeScript 5.8.3** - Type safety and developer experience
 
 ## Full-Stack Capabilities
 - **API Routes** - Built-in backend API with TypeScript support
@@ -25,35 +19,29 @@
 - **React Hook Form 7.61.1** - Form state management
 - **Zod 3.25.76** - Schema validation
 
-## Enhanced UI Features
-- **next-themes 0.3.0** - Theme switching support
-- **Sonner 1.7.4** - Toast notifications
-- **cmdk 1.1.1** - Command palette component
-- **date-fns 3.6.0** - Date utility functions
-- **react-day-picker 8.10.1** - Date picker component
-- **embla-carousel-react 8.6.0** - Carousel component
-- **recharts 2.15.4** - Chart library
-- **react-resizable-panels 2.1.9** - Resizable layout panels
-- **input-otp 1.4.2** - OTP input component
-- **vaul 0.9.9** - Drawer component
-
-## Development Tools
-- **ESLint** - Code linting with Next.js configuration
-- **TypeScript ESLint** - TypeScript-specific linting
-- **Autoprefixer 10.4.21** - CSS vendor prefixing
-- **PostCSS 8.5.6** - CSS processing
-
-## Project Architecture
-- **Full-Stack Application** - Frontend + Backend API capabilities
-- **App Router** - Next.js 13+ file-based routing system
-- **Component-based architecture** - Modular React components
-- **Type-safe development** - Full TypeScript integration
-- **Monorepo ready** - Perfect for adding backend services
-
 ## Internal Routes
-- **/admin-knowledgebase-addition** - Admin interface for uploading PDF documents into the knowledge base
-- **/camelbackventures-product-demo** - Demo workspace with analyze and generate tools tailored for Camelback Ventures Fellowship application
-    * The Analyze flow uploads the selected documents via the OpenAI File API with a 24-hour expiry before triggering analysis
+
+### Admin Routes
+- **/admin-knowledgebase-addition** - Admin interface for uploading PDF documents into the knowledge base (supports multiple PDF uploads with progress tracking)
+
+### Demo Workspaces
+**Note:** Both `/demo` and `/camelbackventures-product-demo` are separate frontend interfaces that call the **same backend API routes** (`/api/analyze` and `/api/generate`). All OpenAI functionality (Files API, vector stores, web references, knowledge base) works identically across both workspaces.
+
+- **/demo** - Primary demo workspace for housing justice notices
+    * `/demo/analyze` - Upload and analyze eviction notices for legal compliance defects
+    * `/demo/generate` - Generate legally compliant eviction notices with AI assistance
+    
+- **/camelbackventures-product-demo** - Demo workspace tailored for Camelback Ventures Fellowship application
+    * `/camelbackventures-product-demo/analyze` - Same analyze functionality as `/demo/analyze`
+    * `/camelbackventures-product-demo/generate` - Same generate functionality as `/demo/generate`
+
+**Shared Features Across All Demo Routes:**
+- Owner occupied field (for residential evictions)
+- Residential, commercial, and post-foreclosure eviction types
+- 11+ eviction reasons (non-payment, breach of covenant, lease violations, etc.)
+- Comprehensive form fields (tenant names, property address, jurisdiction, etc.)
+- Real-time AI analysis and generation with latest legal statutes
+- PDF generation and download capabilities
 
 ## OpenAI Software Used
 - **Files API** - The Analyze workflow uploads notice documents to OpenAI with a 24-hour expiration window so they can be referenced later for LLM analysis while keeping storage ephemeral.
@@ -77,26 +65,12 @@ The notice generation workflow dynamically fetches current legal statutes and re
 
 Content is fetched fresh on each generation request and cached for 1 hour to ensure legal accuracy while minimizing external requests. If web references are unavailable, the system falls back to the knowledge base vector store and template-based generation.
 
-## Migration Benefits
-- **Better SEO** - Server-side rendering and static generation
-- **Full-Stack TypeScript** - Seamless frontend/backend development
-- **API Routes** - Built-in backend for your TypeScript backend needs
-- **Performance** - Image optimization, automatic code splitting
-- **Production Ready** - Enterprise-grade framework with excellent DX
-
-## Key Features
-- Responsive design with mobile-first approach
-- Accessible UI components via Radix UI
-- Modern CSS with Tailwind utility classes
-- Form validation and state management
-- Toast notifications and interactive components
-- Icon system with Lucide React
-- Theme support for light/dark modes
-- SEO optimized with proper meta tags
-- Performance optimized with Next.js features 
-
 
 ### Next update for Brandon
 * Login button (so we can store files by user) on the home page opens a form -> proceeds to the analysis / generation page
 * A pdf is actually generated
 * There is a download button that actually works
+* owner occupied field is there
+
+
+TOOD: analyze route functionality

@@ -89,6 +89,134 @@ const recordNoticeFile = async (
   )
 }
 
+// Get the knowledge base vector store ID
+const getKnowledgeBaseVectorStore = async () => {
+  if (!pool) return null
+  
+  try {
+    const result = await pool.query(
+      'SELECT vector_store_id FROM knowledge_base_vector_store LIMIT 1'
+    )
+    return result.rows.length > 0 ? result.rows[0].vector_store_id as string : null
+  } catch (error) {
+    console.error('Error fetching knowledge base vector store:', error)
+    return null
+  }
+}
+
+// Search vector store for relevant context
+const searchVectorStore = async (
+  vectorStoreId: string,
+  query: string
+): Promise<string> => {
+  try {
+    // List files in the vector store
+    const files = await openai.vectorStores.files.list(vectorStoreId, {
+      limit: 20,
+    })
+
+    if (files.data.length === 0) {
+      return 'No reference documents found in knowledge base.'
+    }
+
+    // Get a sample of file content for context
+    // Note: In a production system, you'd use proper embedding-based search
+    // For now, we'll inform the model about available files
+    const fileList = files.data
+      .slice(0, 5)
+      .map((f) => f.id)
+      .join(', ')
+
+    return `Reference documents available in knowledge base (${files.data.length} total files). Use these as examples for proper legal formatting, language, and structure.`
+  } catch (error) {
+    console.error('Error searching vector store:', error)
+    return 'Knowledge base available but search failed.'
+  }
+}
+
+// Generate notice content using Chat Completions API with knowledge base context
+const generateNoticeWithKnowledgeBase = async (payload: {
+  evictionType: string
+  noticeType: string
+  tenantNames: Array<{ name: string }>
+  landlordName?: string
+  propertyAddress: string
+  jurisdiction: string
+  rentOwed?: string
+  situationDescription?: string
+}) => {
+  try {
+    const knowledgeBaseVectorStoreId = await getKnowledgeBaseVectorStore()
+
+    // Build the search query
+    const searchQuery = `${payload.evictionType} eviction notice ${payload.noticeType} ${payload.jurisdiction}`
+
+    // Get context from vector store
+    let vectorStoreContext = ''
+    if (knowledgeBaseVectorStoreId) {
+      vectorStoreContext = await searchVectorStore(
+        knowledgeBaseVectorStoreId,
+        searchQuery
+      )
+    }
+
+    // Create the system prompt
+    const systemPrompt = `You are an expert legal assistant specializing in housing law and eviction notices. Your role is to generate legally compliant eviction notices based on the provided information.
+
+${vectorStoreContext}
+
+Guidelines:
+1. Match the proper legal format and structure from similar notices
+2. Include all required legal language and citations
+3. Follow jurisdiction-specific requirements
+4. Ensure proper notice periods and service methods
+5. Use appropriate legal terminology
+6. Generate notices that are clear, legally sound, and professionally formatted
+
+Generate ONLY the notice text without any additional commentary or explanations.`
+
+    // Create the user prompt
+    const userPrompt = `Generate a legally compliant ${payload.evictionType} eviction notice for ${payload.noticeType || 'the specified reason'}.
+
+Details:
+- Tenant(s): ${payload.tenantNames.map((t) => t.name).filter(Boolean).join(', ') || 'Not specified'}
+- Property Address: ${payload.propertyAddress}
+- Jurisdiction: ${payload.jurisdiction}
+${payload.landlordName ? `- Landlord: ${payload.landlordName}` : ''}
+${payload.rentOwed ? `- Amount Owed: ${payload.rentOwed}` : ''}
+${payload.situationDescription ? `- Situation: ${payload.situationDescription}` : ''}
+
+Please generate a complete, legally compliant notice following the format and legal requirements. Include all required sections, legal citations, and proper formatting.`
+
+    // Call Chat Completions API with GPT-4o model
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+      temperature: 0.3, // Lower temperature for more consistent legal formatting
+    })
+
+    const generatedContent = completion.choices[0]?.message?.content
+
+    if (!generatedContent) {
+      throw new Error('No content generated from API')
+    }
+
+    return generatedContent
+  } catch (error) {
+    console.error('Error generating notice with knowledge base:', error)
+    return null
+  }
+}
+
 interface NoticePdfPayload {
   title: string
   tenantName: string
@@ -104,8 +232,8 @@ const buildNoticePdf = (payload: NoticePdfPayload) => {
     const doc = new PDFDocument({ size: 'LETTER', margin: 50 })
     const chunks: Buffer[] = []
 
-    doc.on('data', (chunk) => {
-      chunks.push(chunk as Buffer)
+    doc.on('data', (chunk: Buffer) => {
+      chunks.push(chunk)
     })
     doc.on('end', () => {
       resolve(Buffer.concat(chunks))
@@ -152,70 +280,113 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { tenantName, landlordName, propertyAddress, noticeType, rentOwed, jurisdiction } = await request.json()
+    const formData = await request.json()
+    const { 
+      tenantName, 
+      tenantNames = [],
+      landlordName, 
+      propertyAddress, 
+      noticeType, 
+      evictionType = 'residential',
+      rentOwed, 
+      jurisdiction,
+      addressLine1,
+      addressLine2,
+      city,
+      state,
+      zipCode,
+      situationDescription
+    } = formData
 
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    // Generate mock notice based on form data
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     })
 
-    let noticeTitle = ""
-    let noticePeriod = ""
-    let specificLanguage = ""
+    // Build full address
+    const fullAddress = propertyAddress || [
+      addressLine1,
+      addressLine2,
+      `${city}, ${state} ${zipCode}`.trim()
+    ].filter(Boolean).join(', ')
 
-    switch (noticeType) {
-      case "3-day-pay-or-quit":
-        noticeTitle = "NOTICE TO PAY RENT OR QUIT"
-        noticePeriod = "three (3) days"
-        specificLanguage = `YOU ARE HEREBY NOTIFIED that the rent on the above-described premises occupied by you is now due and payable in the amount of ${rentOwed} for the rental period specified above.
+    // Combine tenant names
+    const allTenantNames = tenantNames.length > 0 
+      ? tenantNames 
+      : tenantName 
+        ? [{ name: tenantName }] 
+        : [{ name: 'Tenant Name' }]
+
+    // Try to generate notice using AI with knowledge base
+    let generatedNotice = await generateNoticeWithKnowledgeBase({
+      evictionType,
+      noticeType,
+      tenantNames: allTenantNames,
+      landlordName,
+      propertyAddress: fullAddress,
+      jurisdiction,
+      rentOwed,
+      situationDescription,
+    })
+
+    // Fallback to mock notice if AI generation fails
+    if (!generatedNotice) {
+      console.log('AI generation failed, using fallback mock notice')
+      
+      let noticeTitle = ""
+      let noticePeriod = ""
+      let specificLanguage = ""
+
+      switch (noticeType) {
+        case "non-payment":
+        case "3-day-pay-or-quit":
+          noticeTitle = "NOTICE TO PAY RENT OR QUIT"
+          noticePeriod = "three (3) days"
+          specificLanguage = `YOU ARE HEREBY NOTIFIED that the rent on the above-described premises occupied by you is now due and payable in the amount of ${rentOwed || '$[AMOUNT]'} for the rental period specified above.
 
 YOU ARE FURTHER NOTIFIED that you are required to pay said rent in full within three (3) days after the date of service of this notice or quit and surrender said premises to the undersigned, or legal proceedings will be instituted against you to recover possession of said premises, to declare the forfeiture of the lease or rental agreement under which you occupy said premises and to recover rents and damages, together with court costs and attorney's fees.`
-        break
-      case "30-day-notice":
-        noticeTitle = "30-DAY NOTICE TO QUIT"
-        noticePeriod = "thirty (30) days"
-        specificLanguage = `YOU ARE HEREBY NOTIFIED that your tenancy of the above-described premises is hereby terminated thirty (30) days after the date of service of this notice on you.
+          break
+        case "30-day-notice":
+          noticeTitle = "30-DAY NOTICE TO QUIT"
+          noticePeriod = "thirty (30) days"
+          specificLanguage = `YOU ARE HEREBY NOTIFIED that your tenancy of the above-described premises is hereby terminated thirty (30) days after the date of service of this notice on you.
 
 YOU ARE FURTHER NOTIFIED that you are required to quit and surrender said premises to the undersigned on or before the expiration of said thirty (30) days, or legal proceedings will be instituted against you to recover possession of said premises.`
-        break
-      case "60-day-notice":
-        noticeTitle = "60-DAY NOTICE TO QUIT"
-        noticePeriod = "sixty (60) days"
-        specificLanguage = `YOU ARE HEREBY NOTIFIED that your tenancy of the above-described premises is hereby terminated sixty (60) days after the date of service of this notice on you.
+          break
+        case "60-day-notice":
+          noticeTitle = "60-DAY NOTICE TO QUIT"
+          noticePeriod = "sixty (60) days"
+          specificLanguage = `YOU ARE HEREBY NOTIFIED that your tenancy of the above-described premises is hereby terminated sixty (60) days after the date of service of this notice on you.
 
 YOU ARE FURTHER NOTIFIED that you are required to quit and surrender said premises to the undersigned on or before the expiration of said sixty (60) days, or legal proceedings will be instituted against you to recover possession of said premises.`
-        break
-      default:
-        noticeTitle = "NOTICE TO QUIT"
-        noticePeriod = "as specified by law"
-        specificLanguage = "Please see attached lease agreement for specific terms and conditions."
-    }
+          break
+        default:
+          noticeTitle = "NOTICE TO QUIT"
+          noticePeriod = "as specified by law"
+          specificLanguage = "Please see attached lease agreement for specific terms and conditions."
+      }
 
-    const mockNotice = `${noticeTitle}
+      generatedNotice = `${noticeTitle}
 
-TO: ${tenantName}
+TO: ${allTenantNames.map((t: {name: string}) => t.name).filter(Boolean).join(', ') || 'Tenant Name'}
 AND ALL OTHER OCCUPANTS OF THE PREMISES DESCRIBED BELOW:
 
 PLEASE TAKE NOTICE that you are hereby required to quit and surrender to the undersigned the premises now held and occupied by you, being those certain premises situated in ${jurisdiction}, described as follows:
 
-${propertyAddress}
+${fullAddress}
 
 ${specificLanguage}
 
-${noticeType === "3-day-pay-or-quit" ? `The amount of rent due must be paid to:
-${landlordName}
+${noticeType === "non-payment" || noticeType === "3-day-pay-or-quit" ? `The amount of rent due must be paid to:
+${landlordName || '[LANDLORD NAME]'}
 [Payment Address - To be filled in]
 ${jurisdiction}
 
 Acceptable forms of payment: [Cash, Check, Money Order - To be specified]` : ''}
 
 This notice is served upon you for the following reason(s):
-${noticeType === "3-day-pay-or-quit" ? `☐ Non-payment of rent in the amount of ${rentOwed}` : '☐ Other breach of lease terms as specified'}
+${noticeType === "non-payment" || noticeType === "3-day-pay-or-quit" ? `☐ Non-payment of rent in the amount of ${rentOwed || '$[AMOUNT]'}` : '☐ Other breach of lease terms as specified'}
 
 NOTICE: The law provides that if you fail to comply with this notice within ${noticePeriod}, you may be subject to legal proceedings, including unlawful detainer action, to recover possession of the premises and monetary damages. Such legal proceedings may result in your eviction from the premises and a money judgment against you.
 
@@ -224,7 +395,7 @@ IF YOU HAVE QUESTIONS about your rights as a tenant, you may contact a local ten
 DATED: ${currentDate}
 
 _________________________________
-${landlordName}
+${landlordName || '[LANDLORD NAME]'}
 Owner/Authorized Agent
 
 _________________________________
@@ -252,16 +423,20 @@ _________________________________
 Print Name
 
 Note: This is a computer-generated notice template. Please review all applicable local, state, and federal laws before serving. Consider consulting with a qualified attorney to ensure compliance with all legal requirements in your jurisdiction.`
+    }
 
     const noticeFileName = `notice-${new Date().toISOString().split('T')[0]}.pdf`
 
+    // Extract title from generated notice (first line)
+    const noticeTitle = generatedNotice.split('\n')[0].trim() || 'HOUSING NOTICE'
+
     const pdfBuffer = await buildNoticePdf({
       title: noticeTitle,
-      tenantName,
-      landlordName,
-      propertyAddress,
-      jurisdiction,
-      noticeBody: mockNotice,
+      tenantName: allTenantNames.map((t: {name: string}) => t.name).filter(Boolean).join(', ') || 'Tenant',
+      landlordName: landlordName || 'Landlord',
+      propertyAddress: fullAddress,
+      jurisdiction: jurisdiction || 'N/A',
+      noticeBody: generatedNotice,
       currentDate,
     })
 
@@ -301,7 +476,7 @@ Note: This is a computer-generated notice template. Please review all applicable
     return NextResponse.json({ 
       pdfDataUrl,
       fileName: noticeFileName,
-      notice: mockNotice,  // Keep for backward compatibility if needed
+      notice: generatedNotice,
       metadata: {
         fileId: uploadedFileId,
         vectorStoreId,

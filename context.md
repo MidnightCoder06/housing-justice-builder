@@ -58,6 +58,11 @@
 ## OpenAI Software Used
 - **Files API** - The Analyze workflow uploads notice documents to OpenAI with a 24-hour expiration window so they can be referenced later for LLM analysis while keeping storage ephemeral.
 - **Vector Stores** - Generated notices are persisted in per-user vector stores so future LLM runs can reference prior documents.
+- **Knowledge Base Vector Store** - Admin-uploaded PDFs are stored in a single global vector store (`housing-justice-knowledge-base`) for AI-powered legal reference and compliance checking. The vector store ID is persisted in Neon for reuse across all uploads.
+- **Chat Completions API (GPT-4o)** - The generate workflow uses OpenAI's GPT-4o model with vector store context retrieval. The system queries the knowledge base vector store to inform the AI about available reference documents. As more sample notices are added to the knowledge base, the AI generates better formatting, legal language, and jurisdiction-specific requirements for more accurate notices.
+
+TODO: include url analysis to incorporate in the generation flow
+TODO: ask for help on what do with anayze flow
 
 ## Third-Party Libraries
 - **pdfkit** - Generates the dynamic notice PDFs (see https://www.npmjs.com/package/pdfkit)

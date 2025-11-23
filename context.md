@@ -59,14 +59,23 @@
 - **Files API** - The Analyze workflow uploads notice documents to OpenAI with a 24-hour expiration window so they can be referenced later for LLM analysis while keeping storage ephemeral.
 - **Vector Stores** - Generated notices are persisted in per-user vector stores so future LLM runs can reference prior documents.
 - **Knowledge Base Vector Store** - Admin-uploaded PDFs are stored in a single global vector store (`housing-justice-knowledge-base`) for AI-powered legal reference and compliance checking. The vector store ID is persisted in Neon for reuse across all uploads.
-- **Chat Completions API (GPT-4o)** - The generate workflow uses OpenAI's GPT-4o model with vector store context retrieval. The system queries the knowledge base vector store to inform the AI about available reference documents. As more sample notices are added to the knowledge base, the AI generates better formatting, legal language, and jurisdiction-specific requirements for more accurate notices.
+- **Chat Completions API (GPT-4o)** - The generate workflow uses OpenAI's GPT-4o model with vector store context retrieval and real-time legal reference fetching. The system queries the knowledge base vector store for sample notices and dynamically fetches current California rent control laws, statutes, and tenant protection acts from authoritative sources. This ensures generated notices comply with the latest legal requirements. As more sample notices are added to the knowledge base, the AI generates better formatting, legal language, and jurisdiction-specific requirements for more accurate notices.
 
-TODO: include url analysis to incorporate in the generation flow
-TODO: ask for help on what do with anayze flow
+TODO: ask for help on what do with analyze flow
+^show a warning that just an initial review. Requires human check as well
 
 ## Third-Party Libraries
 - **pdfkit** - Generates the dynamic notice PDFs (see https://www.npmjs.com/package/pdfkit)
 - **pg** - Node.js PostgreSQL client used to persist OpenAI file + vector store metadata in Neon
+- **cheerio** - Fast HTML parser for extracting legal content from web references
+
+## Real-Time Legal References
+The notice generation workflow dynamically fetches current legal statutes and rent control information from authoritative sources:
+- **Nolo California Rent Control Guide** - Comprehensive rent control laws and eviction protections
+- **California Civil Code §1947.12** - Current statutory requirements for rent increases and notices
+- **California AB 1482 (Tenant Protection Act)** - Statewide rent cap and just-cause eviction requirements
+
+Content is fetched fresh on each generation request and cached for 1 hour to ensure legal accuracy while minimizing external requests. If web references are unavailable, the system falls back to the knowledge base vector store and template-based generation.
 
 ## Migration Benefits
 - **Better SEO** - Server-side rendering and static generation

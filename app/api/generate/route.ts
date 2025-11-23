@@ -3,6 +3,7 @@ import { createRequire } from 'module'
 import OpenAI from 'openai'
 import { toFile } from 'openai/uploads'
 import { Pool } from 'pg'
+import { load } from 'cheerio'
 
 const require = createRequire(import.meta.url)
 const PDFKitModule = require('pdfkit/js/pdfkit.standalone.js')
@@ -19,6 +20,22 @@ const pool = process.env.DATABASE_URL
   : null
 
 let tablesInitialized = false
+
+// Cache for web references (1 hour TTL)
+interface CachedWebReference {
+  content: string
+  fetchedAt: number
+}
+
+const webReferenceCache = new Map<string, CachedWebReference>()
+const CACHE_TTL = 60 * 60 * 1000 // 1 hour in milliseconds
+
+// Legal reference URLs
+const LEGAL_REFERENCE_URLS = [
+  'https://www.nolo.com/legal-encyclopedia/california-rent-control-law.html',
+  'https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?sectionNum=1947.12.&lawCode=CIV',
+  'https://leginfo.legislature.ca.gov/faces/billTextClient.xhtml?bill_id=201920200AB1482'
+]
 
 const ensureTables = async () => {
   if (!pool || tablesInitialized) return
@@ -104,6 +121,103 @@ const getKnowledgeBaseVectorStore = async () => {
   }
 }
 
+// Extract clean text from HTML
+const extractTextFromHTML = (html: string, url: string): string => {
+  const $ = load(html)
+  
+  // Remove script, style, and nav elements
+  $('script, style, nav, header, footer, .nav, .navigation, .menu').remove()
+  
+  // Site-specific extraction
+  if (url.includes('nolo.com')) {
+    // Extract main article content from Nolo
+    const mainContent = $('article, .article-content, main, .content').first()
+    if (mainContent.length > 0) {
+      return mainContent.text().trim().replace(/\s+/g, ' ')
+    }
+  } else if (url.includes('leginfo.legislature.ca.gov')) {
+    // Extract statute/bill text from California Legislature site
+    const statuteContent = $('body').text()
+    return statuteContent.trim().replace(/\s+/g, ' ')
+  }
+  
+  // Fallback: get body text
+  return $('body').text().trim().replace(/\s+/g, ' ')
+}
+
+// Fetch and extract text from a URL with caching
+const fetchWebReference = async (url: string): Promise<string> => {
+  try {
+    // Check cache first
+    const cached = webReferenceCache.get(url)
+    const now = Date.now()
+    
+    if (cached && (now - cached.fetchedAt) < CACHE_TTL) {
+      console.log(`Using cached content for ${url}`)
+      return cached.content
+    }
+    
+    // Fetch fresh content
+    console.log(`Fetching fresh content from ${url}`)
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; EquityWorksBot/1.0; +https://equityworks.com)'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    
+    const html = await response.text()
+    const extractedText = extractTextFromHTML(html, url)
+    
+    // Limit text length to prevent context overflow (max 4000 chars per URL)
+    const truncatedText = extractedText.slice(0, 4000)
+    
+    // Cache the result
+    webReferenceCache.set(url, {
+      content: truncatedText,
+      fetchedAt: now
+    })
+    
+    return truncatedText
+  } catch (error) {
+    console.error(`Error fetching ${url}:`, error)
+    return ''
+  }
+}
+
+// Fetch all legal reference URLs in parallel
+const fetchAllWebReferences = async (): Promise<string> => {
+  try {
+    const results = await Promise.all(
+      LEGAL_REFERENCE_URLS.map(url => fetchWebReference(url))
+    )
+    
+    // Filter out empty results and combine
+    const validResults = results.filter(text => text.length > 0)
+    
+    if (validResults.length === 0) {
+      return 'Web references unavailable at this time.'
+    }
+    
+    // Format the combined references
+    const formattedReferences = LEGAL_REFERENCE_URLS.map((url, index) => {
+      const content = results[index]
+      if (content) {
+        return `\n=== Reference: ${url} ===\n${content}\n`
+      }
+      return ''
+    }).filter(Boolean).join('\n')
+    
+    return `\n## LEGAL REFERENCES (Current as of fetch time)\n${formattedReferences}`
+  } catch (error) {
+    console.error('Error fetching web references:', error)
+    return 'Web references unavailable at this time.'
+  }
+}
+
 // Search vector store for relevant context
 const searchVectorStore = async (
   vectorStoreId: string,
@@ -146,7 +260,11 @@ const generateNoticeWithKnowledgeBase = async (payload: {
   situationDescription?: string
 }) => {
   try {
-    const knowledgeBaseVectorStoreId = await getKnowledgeBaseVectorStore()
+    // Fetch fresh legal references in parallel with vector store query
+    const [knowledgeBaseVectorStoreId, webReferences] = await Promise.all([
+      getKnowledgeBaseVectorStore(),
+      fetchAllWebReferences()
+    ])
 
     // Build the search query
     const searchQuery = `${payload.evictionType} eviction notice ${payload.noticeType} ${payload.jurisdiction}`
@@ -160,18 +278,23 @@ const generateNoticeWithKnowledgeBase = async (payload: {
       )
     }
 
-    // Create the system prompt
+    // Create the system prompt with web references
     const systemPrompt = `You are an expert legal assistant specializing in housing law and eviction notices. Your role is to generate legally compliant eviction notices based on the provided information.
 
 ${vectorStoreContext}
 
+${webReferences}
+
 Guidelines:
-1. Match the proper legal format and structure from similar notices
-2. Include all required legal language and citations
-3. Follow jurisdiction-specific requirements
-4. Ensure proper notice periods and service methods
+1. Match the proper legal format and structure from similar notices in the knowledge base
+2. Include all required legal language and citations from current California law
+3. Follow jurisdiction-specific requirements as detailed in the legal references above
+4. Ensure proper notice periods and service methods per current statutes
 5. Use appropriate legal terminology
 6. Generate notices that are clear, legally sound, and professionally formatted
+7. Cross-reference the legal statute text provided above to ensure compliance
+
+IMPORTANT: The legal references above contain the CURRENT California rent control laws, eviction statutes, and tenant protection acts. Use these as authoritative sources for legal requirements.
 
 Generate ONLY the notice text without any additional commentary or explanations.`
 

@@ -34,7 +34,7 @@ const TeamSection = () => {
             <div className="flex flex-col items-center text-center flex-1 max-w-sm">
               <div className="mb-4">
                 <img 
-                  src="/jean-leconte-headshot.jpeg" 
+                  src="/jean-leconte-internxl-headshot.jpeg" 
                   alt="Jean Leconte" 
                   className="w-32 h-32 rounded-full object-cover shadow-lg"
                 />

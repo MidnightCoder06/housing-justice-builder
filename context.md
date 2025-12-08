@@ -107,4 +107,3 @@ Content is fetched fresh on each generation request and cached for 1 hour to ens
 * **Add AI Analysis Disclaimer** - Display warning: "This is an initial AI review. Human legal review is required."
 * **User Authentication** - Login system to support per-user file storage (currently all users share 'abc' ID)
 * **Document Type Configurability** - Allow switching between different notice types (currently hardcoded to "3-day eviction notice")
-* **End-to-End Testing** - Scheduled for next week

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -52,10 +52,11 @@ export default function CamelbackAnalyzePage() {
   
   const { register, handleSubmit, setValue } = useForm()
 
-  const uploadDocumentToOpenAI = async (document: File) => {
+  // Upload file to OpenAI and get file ID
+  const uploadFileToOpenAI = async (fileToUpload: File): Promise<string> => {
     const formData = new FormData()
-    formData.append('file', document)
-    formData.append('purpose', 'assistants')
+    formData.append('file', fileToUpload)
+    formData.append('purpose', 'user_data')
     formData.append('expiresInDays', '1')
 
     const response = await fetch('/api/file-upload', {
@@ -63,46 +64,20 @@ export default function CamelbackAnalyzePage() {
       body: formData,
     })
 
-    const data = await response.json().catch(() => null)
+    const data = await response.json()
 
-    if (data) {
-      console.log('OpenAI file upload response', data)
+    if (!response.ok || !data.fileId) {
+      throw new Error(data.error || 'Failed to upload file to OpenAI')
     }
 
-    if (!response.ok || !data) {
-      throw new Error(
-        (data && data.error) || 'Unable to prepare document for analysis.'
-      )
-    }
-
-    return data.fileId as string
+    console.log('File uploaded to OpenAI:', data)
+    return data.fileId
   }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0]
     if (uploadedFile) {
       setFile(uploadedFile)
-      
-      // Mock text extraction for demo
-      const mockText = `NOTICE TO QUIT AND PAY RENT OR QUIT
-
-TO: TENANT NAME
-ADDRESS: 123 Main Street, Apartment 2B, San Francisco, CA 94102
-
-YOU ARE HEREBY NOTIFIED that the rent on the above-described premises occupied by you is now due and payable in the amount of $2,400.00 for the period from March 1, 2024 to March 31, 2024.
-
-YOU ARE FURTHER NOTIFIED that you are required to pay said rent in full within three (3) days after the date of service of this notice or quit and surrender said premises to the undersigned, or legal proceedings will be instituted against you to recover possession of said premises, to declare the forfeiture of the lease or rental agreement under which you occupy said premises and to recover rents and damages, together with court costs and attorney's fees.
-
-The amount of rent due must be paid to:
-LANDLORD NAME
-1234 Property Management Ave
-San Francisco, CA 94105
-
-Date: March 5, 2024
-Signature: [Landlord Signature]
-LANDLORD NAME, Owner/Agent`
-      
-      // Mock text extracted from file
     }
   }
 
@@ -167,43 +142,65 @@ LANDLORD NAME, Owner/Agent`
     setIsAnalyzing(true)
     
     try {
-      const uploadedFileIds: string[] = []
-
-      if (evictionType === 'commercial') {
-        if (commercialLeaseFile) {
-          const leaseUploadId = await uploadDocumentToOpenAI(commercialLeaseFile)
-          uploadedFileIds.push(leaseUploadId)
+      // Upload file(s) to OpenAI first to get file ID(s)
+      let fileId: string | null = null
+      const fileToUpload = evictionType === 'commercial' ? commercialLeaseFile : file
+      
+      if (fileToUpload) {
+        try {
+          fileId = await uploadFileToOpenAI(fileToUpload)
+        } catch (uploadError) {
+          console.error('File upload error:', uploadError)
+          // Continue without file ID - the API can still analyze with text extraction fallback
         }
-        if (sampleNoticeFile) {
-          const noticeUploadId = await uploadDocumentToOpenAI(sampleNoticeFile)
-          uploadedFileIds.push(noticeUploadId)
-        }
-      } else if (file) {
-        const uploadedId = await uploadDocumentToOpenAI(file)
-        uploadedFileIds.push(uploadedId)
       }
 
+      // Send the file ID to the analyze endpoint
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          fileId,
           fileName: evictionType === 'commercial' 
             ? `${commercialLeaseFile?.name || 'lease'} + ${sampleNoticeFile?.name || 'notice'}`
             : file?.name || 'uploaded-document',
           evictionType,
           ownerOccupied,
-          noticeType,
-          uploadedFileIds,
+          noticeType
         }),
       })
       
       const result = await response.json()
-      console.log('Analyze API response', result)
-      setAnalysisResult(result)
+      console.log('Analyze API response:', result)
+      
+      // Check if the response is an error
+      if (result.error) {
+        console.error('Analysis API error:', result.error)
+        setAnalysisResult({
+          detectedDefects: [{
+            issue: 'Analysis Failed',
+            severity: 'high' as const,
+            description: result.error || 'Unable to analyze document. Please try again.',
+            source: 'System Error'
+          }],
+          compliantElements: []
+        })
+      } else {
+        setAnalysisResult(result)
+      }
     } catch (error) {
       console.error('Analysis error:', error)
+      setAnalysisResult({
+        detectedDefects: [{
+          issue: 'Connection Error',
+          severity: 'high' as const,
+          description: 'Unable to connect to analysis service. Please check your connection and try again.',
+          source: 'System Error'
+        }],
+        compliantElements: []
+      })
     } finally {
       setIsAnalyzing(false)
     }
@@ -361,7 +358,6 @@ LANDLORD NAME, Owner/Agent`
                 )}
 
                 {noticeType === 'non-payment' && (
-                  console.log('Showing rent balance fields for noticeType:', noticeType),
                   <div className="space-y-4 p-6 border border-gray-300 rounded-lg bg-gray-50 w-full max-w-none">
                     <h3 className="text-lg font-medium text-gray-900">Outstanding Rent Balance</h3>
                     

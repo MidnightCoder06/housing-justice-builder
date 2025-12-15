@@ -40,7 +40,7 @@ const TeamSection = () => {
                 />
               </div>
               <h4 className="text-xl font-semibold mb-2">Jean Leconte</h4>
-              <p className="text-muted-foreground text-center leading-relaxed">Software Engineer (ex-Google, Microsoft, Amazon, Meta) | Author</p>
+              <p className="text-muted-foreground text-center leading-relaxed">Software Engineer (ex-Google, Microsoft, Meta)</p>
             </div>
           </div>
         </div>

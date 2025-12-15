@@ -25,7 +25,7 @@ interface CachedWebReference {
 const webReferenceCache = new Map<string, CachedWebReference>()
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour in milliseconds
 
-// Legal reference URLs
+// Legal reference URLs for real-time law fetching
 const LEGAL_REFERENCE_URLS = [
   'https://www.nolo.com/legal-encyclopedia/california-rent-control-law.html',
   'https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?sectionNum=1947.12.&lawCode=CIV',
@@ -162,9 +162,10 @@ const fetchWebReference = async (url: string): Promise<string> => {
   }
 }
 
-// Fetch all legal reference URLs in parallel
+// Fetch all legal reference URLs in parallel for real-time law checking
 const fetchAllWebReferences = async (): Promise<string> => {
   try {
+    console.log('Fetching real-time legal references from authoritative sources...')
     const results = await Promise.all(
       LEGAL_REFERENCE_URLS.map(url => fetchWebReference(url))
     )
@@ -172,6 +173,7 @@ const fetchAllWebReferences = async (): Promise<string> => {
     const validResults = results.filter(text => text.length > 0)
     
     if (validResults.length === 0) {
+      console.warn('No web references could be fetched')
       return 'Web references unavailable at this time.'
     }
     
@@ -183,57 +185,40 @@ const fetchAllWebReferences = async (): Promise<string> => {
       return ''
     }).filter(Boolean).join('\n')
     
-    return `\n## LEGAL REFERENCES (Current as of fetch time)\n${formattedReferences}`
+    console.log(`Successfully fetched ${validResults.length} legal references`)
+    return `\n## CURRENT CALIFORNIA LAW REFERENCES (Fetched in real-time)\nUse these authoritative sources to verify if the uploaded notice violates any current laws:\n${formattedReferences}`
   } catch (error) {
     console.error('Error fetching web references:', error)
     return 'Web references unavailable at this time.'
   }
 }
 
-// Get the knowledge base vector store ID
-const getKnowledgeBaseVectorStore = async () => {
-  if (!pool) return null
+// Get the knowledge base vector store ID from database
+const getKnowledgeBaseVectorStore = async (): Promise<string | null> => {
+  if (!pool) {
+    console.log('No database connection - vector store unavailable')
+    return null
+  }
   
   try {
     const result = await pool.query(
       'SELECT vector_store_id FROM knowledge_base_vector_store LIMIT 1'
     )
-    return result.rows.length > 0 ? result.rows[0].vector_store_id as string : null
+    const vectorStoreId = result.rows.length > 0 ? result.rows[0].vector_store_id as string : null
+    if (vectorStoreId) {
+      console.log(`Found knowledge base vector store: ${vectorStoreId}`)
+    }
+    return vectorStoreId
   } catch (error) {
     console.error('Error fetching knowledge base vector store:', error)
     return null
   }
 }
 
-// Search vector store for relevant context
-const searchVectorStore = async (
-  vectorStoreId: string,
-  query: string
-): Promise<string> => {
-  try {
-    const files = await openai.vectorStores.files.list(vectorStoreId, {
-      limit: 20,
-    })
-
-    if (files.data.length === 0) {
-      return 'No reference documents found in knowledge base.'
-    }
-
-    const fileList = files.data
-      .slice(0, 5)
-      .map((f) => f.id)
-      .join(', ')
-
-    return `Reference documents available in knowledge base (${files.data.length} total files). Use these as examples for proper legal formatting, language, and structure.`
-  } catch (error) {
-    console.error('Error searching vector store:', error)
-    return 'Knowledge base available but search failed.'
-  }
-}
-
-// Analyze document using GPT-4o with knowledge base and web references
+// Analyze document using OpenAI Responses API with file_search tool for vector store
 const analyzeDocumentWithAI = async (
-  documentText: string,
+  fileId: string | null,
+  documentText: string | null,
   fileName: string,
   evictionType?: string,
   noticeType?: string
@@ -243,31 +228,26 @@ const analyzeDocumentWithAI = async (
       throw new Error('OPENAI_API_KEY is not configured')
     }
 
-    // Fetch web references and knowledge base in parallel
+    // Fetch web references and knowledge base vector store ID in parallel
     const [knowledgeBaseVectorStoreId, webReferences] = await Promise.all([
       getKnowledgeBaseVectorStore(),
       fetchAllWebReferences()
     ])
-
-    // Get context from vector store
-    let vectorStoreContext = ''
-    if (knowledgeBaseVectorStoreId) {
-      vectorStoreContext = await searchVectorStore(
-        knowledgeBaseVectorStoreId,
-        `${evictionType || ''} ${noticeType || ''} eviction notice analysis`
-      )
-    }
 
     // Build the legal checks reference for the AI
     const legalChecksReference = LEGAL_CHECKS.map(check => 
       `- ${check.title}: ${check.description} (${check.lawCode})`
     ).join('\n')
 
-    // Create the system prompt
-    const systemPrompt = `You are an expert legal assistant specializing in California housing law and eviction notices. Your role is to analyze uploaded eviction notices for legal compliance.
+    // Create the system instructions with real-time legal references
+    const systemInstructions = `You are an expert legal assistant specializing in California housing law and eviction notices. Your role is to analyze uploaded eviction notices for legal compliance.
 
-${vectorStoreContext}
+## YOUR RESOURCES
 
+### 1. Knowledge Base (Sample Notices)
+You have access to a vector store containing sample eviction notices that represent proper legal formatting, language, and structure. Use the file_search tool to find relevant examples and compare the uploaded document against these best practices.
+
+### 2. Real-Time Legal References
 ${webReferences}
 
 ## Legal Compliance Checks
@@ -275,13 +255,17 @@ Review the document for the following specific legal requirements:
 
 ${legalChecksReference}
 
-Guidelines:
-1. Analyze the document against current California law and local rent control ordinances
-2. Identify specific defects with severity levels (high, medium, low)
-3. Identify compliant elements that meet legal requirements
-4. Reference specific law codes for each finding
-5. Be thorough but concise in your analysis
-6. Use the legal references above as authoritative sources
+## ANALYSIS GUIDELINES
+
+1. **Search the knowledge base** for similar sample notices to compare formatting and language
+2. **Cross-reference with the real-time legal sources above** to verify compliance with current California law
+3. Identify specific defects with severity levels:
+   - **high**: Violations that could invalidate the notice or result in case dismissal
+   - **medium**: Technical defects that weaken the notice but may not be fatal
+   - **low**: Minor issues or best practice recommendations
+4. Identify compliant elements that meet legal requirements
+5. Reference specific law codes for each finding
+6. Be thorough but concise in your analysis
 
 Return your analysis in valid JSON format ONLY (no markdown, no code blocks) with this exact structure:
 {
@@ -289,53 +273,91 @@ Return your analysis in valid JSON format ONLY (no markdown, no code blocks) wit
     {
       "issue": "Title of the issue",
       "severity": "high" | "medium" | "low",
-      "description": "Detailed description of the defect",
+      "description": "Detailed description of the defect and why it violates the law",
       "source": "Specific law code or statute"
     }
   ],
   "compliantElements": [
     {
       "element": "Title of compliant element",
-      "description": "Why this element is compliant",
+      "description": "Why this element is compliant with current law",
       "source": "Specific law code or statute"
     }
   ]
 }`
 
-    const userPrompt = `Analyze this ${DOCUMENT_TYPE} for legal compliance:
+    const userPromptText = `Analyze this ${DOCUMENT_TYPE} for legal compliance:
 
 Document Type: ${evictionType || 'Not specified'}
 Notice Type: ${noticeType || 'Not specified'}
 File Name: ${fileName}
 
-DOCUMENT CONTENT:
-${documentText}
+INSTRUCTIONS:
+1. First, search the knowledge base for sample notices similar to this document type to understand proper formatting
+2. Then analyze the uploaded document against current California law using the real-time legal references provided
+3. Identify all defects (law violations) and compliant elements
 
-Provide a thorough analysis identifying both defects and compliant elements. Return ONLY valid JSON.`
+Provide a thorough analysis. Return ONLY valid JSON.`
 
-    // Call Chat Completions API with GPT-4o
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: userPrompt,
-        },
-      ],
-      temperature: 0.3,
-      response_format: { type: "json_object" }
+    // Build the input content array for the Responses API
+    const inputContent: OpenAI.Responses.ResponseInputContent[] = []
+
+    // If we have a file ID, include it as an input_file
+    if (fileId) {
+      inputContent.push({
+        type: 'input_file',
+        file_id: fileId
+      })
+    }
+
+    // Add the text prompt
+    inputContent.push({
+      type: 'input_text',
+      text: documentText 
+        ? `${userPromptText}\n\nDOCUMENT CONTENT:\n${documentText}`
+        : userPromptText
     })
 
-    const analysisContent = completion.choices[0]?.message?.content
+    // Build the tools array based on vector store availability
+    const tools: OpenAI.Responses.Tool[] = []
+    
+    if (knowledgeBaseVectorStoreId) {
+      console.log('Enabling file_search tool with knowledge base vector store')
+      tools.push({
+        type: 'file_search',
+        vector_store_ids: [knowledgeBaseVectorStoreId]
+      })
+    } else {
+      console.log('No vector store available - proceeding without file_search')
+    }
+
+    // Call the Responses API
+    console.log('Calling OpenAI Responses API for document analysis...')
+    const response = await openai.responses.create({
+      model: 'gpt-4o',
+      instructions: systemInstructions,
+      input: [
+        {
+          role: 'user',
+          content: inputContent
+        }
+      ],
+      tools: tools.length > 0 ? tools : undefined,
+      text: {
+        format: {
+          type: 'json_object'
+        }
+      }
+    })
+
+    // Extract the response text
+    const analysisContent = response.output_text
 
     if (!analysisContent) {
       throw new Error('No content generated from API')
     }
 
+    console.log('Analysis complete')
     const analysis = JSON.parse(analysisContent)
     return analysis
   } catch (error) {
@@ -346,18 +368,19 @@ Provide a thorough analysis identifying both defects and compliant elements. Ret
 
 export async function POST(request: NextRequest) {
   try {
-    const { documentText, fileName, evictionType, noticeType } = await request.json()
+    const { fileId, documentText, fileName, evictionType, noticeType } = await request.json()
 
-    if (!documentText) {
+    if (!fileId && !documentText) {
       return NextResponse.json(
-        { error: 'Document text is required' },
+        { error: 'Either fileId or documentText is required' },
         { status: 400 }
       )
     }
 
-    // Perform AI analysis
+    // Perform AI analysis using Responses API with file_search
     const analysis = await analyzeDocumentWithAI(
-      documentText,
+      fileId || null,
+      documentText || null,
       fileName || 'uploaded-document',
       evictionType,
       noticeType

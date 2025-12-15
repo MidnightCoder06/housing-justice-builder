@@ -30,7 +30,7 @@ interface CachedWebReference {
 const webReferenceCache = new Map<string, CachedWebReference>()
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour in milliseconds
 
-// Legal reference URLs
+// Legal reference URLs for real-time law fetching
 const LEGAL_REFERENCE_URLS = [
   'https://www.nolo.com/legal-encyclopedia/california-rent-control-law.html',
   'https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?sectionNum=1947.12.&lawCode=CIV',
@@ -106,15 +106,22 @@ const recordNoticeFile = async (
   )
 }
 
-// Get the knowledge base vector store ID
-const getKnowledgeBaseVectorStore = async () => {
-  if (!pool) return null
+// Get the knowledge base vector store ID from database
+const getKnowledgeBaseVectorStore = async (): Promise<string | null> => {
+  if (!pool) {
+    console.log('No database connection - vector store unavailable')
+    return null
+  }
   
   try {
     const result = await pool.query(
       'SELECT vector_store_id FROM knowledge_base_vector_store LIMIT 1'
     )
-    return result.rows.length > 0 ? result.rows[0].vector_store_id as string : null
+    const vectorStoreId = result.rows.length > 0 ? result.rows[0].vector_store_id as string : null
+    if (vectorStoreId) {
+      console.log(`Found knowledge base vector store: ${vectorStoreId}`)
+    }
+    return vectorStoreId
   } catch (error) {
     console.error('Error fetching knowledge base vector store:', error)
     return null
@@ -188,9 +195,10 @@ const fetchWebReference = async (url: string): Promise<string> => {
   }
 }
 
-// Fetch all legal reference URLs in parallel
+// Fetch all legal reference URLs in parallel for real-time law checking
 const fetchAllWebReferences = async (): Promise<string> => {
   try {
+    console.log('Fetching real-time legal references from authoritative sources...')
     const results = await Promise.all(
       LEGAL_REFERENCE_URLS.map(url => fetchWebReference(url))
     )
@@ -199,6 +207,7 @@ const fetchAllWebReferences = async (): Promise<string> => {
     const validResults = results.filter(text => text.length > 0)
     
     if (validResults.length === 0) {
+      console.warn('No web references could be fetched')
       return 'Web references unavailable at this time.'
     }
     
@@ -211,44 +220,15 @@ const fetchAllWebReferences = async (): Promise<string> => {
       return ''
     }).filter(Boolean).join('\n')
     
-    return `\n## LEGAL REFERENCES (Current as of fetch time)\n${formattedReferences}`
+    console.log(`Successfully fetched ${validResults.length} legal references`)
+    return `\n## CURRENT CALIFORNIA LAW REFERENCES (Fetched in real-time)\nUse these authoritative sources to ensure the generated notice complies with current laws:\n${formattedReferences}`
   } catch (error) {
     console.error('Error fetching web references:', error)
     return 'Web references unavailable at this time.'
   }
 }
 
-// Search vector store for relevant context
-const searchVectorStore = async (
-  vectorStoreId: string,
-  query: string
-): Promise<string> => {
-  try {
-    // List files in the vector store
-    const files = await openai.vectorStores.files.list(vectorStoreId, {
-      limit: 20,
-    })
-
-    if (files.data.length === 0) {
-      return 'No reference documents found in knowledge base.'
-    }
-
-    // Get a sample of file content for context
-    // Note: In a production system, you'd use proper embedding-based search
-    // For now, we'll inform the model about available files
-    const fileList = files.data
-      .slice(0, 5)
-      .map((f) => f.id)
-      .join(', ')
-
-    return `Reference documents available in knowledge base (${files.data.length} total files). Use these as examples for proper legal formatting, language, and structure.`
-  } catch (error) {
-    console.error('Error searching vector store:', error)
-    return 'Knowledge base available but search failed.'
-  }
-}
-
-// Generate notice content using Chat Completions API with knowledge base context
+// Generate notice content using Responses API with file_search tool
 const generateNoticeWithKnowledgeBase = async (payload: {
   evictionType: string
   noticeType: string
@@ -260,39 +240,33 @@ const generateNoticeWithKnowledgeBase = async (payload: {
   situationDescription?: string
 }) => {
   try {
-    // Fetch fresh legal references in parallel with vector store query
+    // Fetch fresh legal references and knowledge base vector store ID in parallel
     const [knowledgeBaseVectorStoreId, webReferences] = await Promise.all([
       getKnowledgeBaseVectorStore(),
       fetchAllWebReferences()
     ])
 
-    // Build the search query
-    const searchQuery = `${payload.evictionType} eviction notice ${payload.noticeType} ${payload.jurisdiction}`
+    // Create the system instructions with web references
+    const systemInstructions = `You are an expert legal assistant specializing in housing law and eviction notices. Your role is to generate legally compliant eviction notices based on the provided information.
 
-    // Get context from vector store
-    let vectorStoreContext = ''
-    if (knowledgeBaseVectorStoreId) {
-      vectorStoreContext = await searchVectorStore(
-        knowledgeBaseVectorStoreId,
-        searchQuery
-      )
-    }
+## YOUR RESOURCES
 
-    // Create the system prompt with web references
-    const systemPrompt = `You are an expert legal assistant specializing in housing law and eviction notices. Your role is to generate legally compliant eviction notices based on the provided information.
+### 1. Knowledge Base (Sample Notices)
+You have access to a vector store containing sample eviction notices that represent proper legal formatting, language, and structure. Use the file_search tool to find relevant examples and model your generated notice after these best practices.
 
-${vectorStoreContext}
-
+### 2. Real-Time Legal References
 ${webReferences}
 
-Guidelines:
-1. Match the proper legal format and structure from similar notices in the knowledge base
-2. Include all required legal language and citations from current California law
-3. Follow jurisdiction-specific requirements as detailed in the legal references above
-4. Ensure proper notice periods and service methods per current statutes
-5. Use appropriate legal terminology
-6. Generate notices that are clear, legally sound, and professionally formatted
-7. Cross-reference the legal statute text provided above to ensure compliance
+## GENERATION GUIDELINES
+
+1. **Search the knowledge base** for similar sample notices to match proper formatting and legal language
+2. **Cross-reference with the real-time legal sources above** to ensure compliance with current California law
+3. Match the proper legal format and structure from similar notices in the knowledge base
+4. Include all required legal language and citations from current California law
+5. Follow jurisdiction-specific requirements as detailed in the legal references above
+6. Ensure proper notice periods and service methods per current statutes
+7. Use appropriate legal terminology
+8. Generate notices that are clear, legally sound, and professionally formatted
 
 IMPORTANT: The legal references above contain the CURRENT California rent control laws, eviction statutes, and tenant protection acts. Use these as authoritative sources for legal requirements.
 
@@ -300,6 +274,10 @@ Generate ONLY the notice text without any additional commentary or explanations.
 
     // Create the user prompt
     const userPrompt = `Generate a legally compliant ${payload.evictionType} eviction notice for ${payload.noticeType || 'the specified reason'}.
+
+INSTRUCTIONS:
+1. First, search the knowledge base for sample notices similar to this eviction type to understand proper formatting
+2. Then generate a notice that follows proper legal format and complies with current California law
 
 Details:
 - Tenant(s): ${payload.tenantNames.map((t) => t.name).filter(Boolean).join(', ') || 'Not specified'}
@@ -311,28 +289,40 @@ ${payload.situationDescription ? `- Situation: ${payload.situationDescription}` 
 
 Please generate a complete, legally compliant notice following the format and legal requirements. Include all required sections, legal citations, and proper formatting.`
 
-    // Call Chat Completions API with GPT-4o model
-    const completion = await openai.chat.completions.create({
+    // Build the tools array based on vector store availability
+    const tools: OpenAI.Responses.Tool[] = []
+    
+    if (knowledgeBaseVectorStoreId) {
+      console.log('Enabling file_search tool with knowledge base vector store for notice generation')
+      tools.push({
+        type: 'file_search',
+        vector_store_ids: [knowledgeBaseVectorStoreId]
+      })
+    } else {
+      console.log('No vector store available - generating without sample notice reference')
+    }
+
+    // Call Responses API with file_search tool
+    console.log('Calling OpenAI Responses API for notice generation...')
+    const response = await openai.responses.create({
       model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
+      instructions: systemInstructions,
+      input: [
         {
           role: 'user',
-          content: userPrompt,
-        },
+          content: userPrompt
+        }
       ],
-      temperature: 0.3, // Lower temperature for more consistent legal formatting
+      tools: tools.length > 0 ? tools : undefined
     })
 
-    const generatedContent = completion.choices[0]?.message?.content
+    const generatedContent = response.output_text
 
     if (!generatedContent) {
       throw new Error('No content generated from API')
     }
 
+    console.log('Notice generation complete')
     return generatedContent
   } catch (error) {
     console.error('Error generating notice with knowledge base:', error)

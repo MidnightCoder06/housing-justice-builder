@@ -7,7 +7,7 @@
 ## Internal Routes
 
 ### Admin Routes
-- **/admin-knowledgebase-addition** - Admin interface for uploading sample PDF documents (eviction notices, legal templates) into the **global knowledge base vector store**. These sample documents are then searchable by the analyze route to compare uploaded notices against best practices.
+- **/admin-knowledgebase-addition** - Admin interface for uploading sample PDF documents (eviction notices, legal templates) into the **global knowledge base vector store**. These sample documents are then searchable by both analyze and generate routes to compare/reference against best practices.
 
 ### Demo Workspaces
 **Note:** Both `/demo` and `/camelbackventures-product-demo` are separate frontend interfaces that call the **same backend API routes** (`/api/analyze` and `/api/generate`). All OpenAI functionality (Files API, Responses API, vector stores, web references, knowledge base) works identically across both workspaces.
@@ -47,8 +47,8 @@ Uploads user documents to OpenAI for analysis:
 
 #### `/api/generate` - **FULLY FUNCTIONAL** ✅
 Generates legally compliant eviction notices with full AI integration:
-- **GPT-4o** via Chat Completions API for notice generation
-- **Knowledge Base Vector Store** queries for sample notice formatting
+- **GPT-4o** via **Responses API** for notice generation (replaces deprecated Assistants API)
+- **file_search Tool** - Searches the **same knowledge base vector store** for sample notice formatting
 - **Real-time Web Reference Fetching** (1-hour cache) from 3 authoritative legal sources:
   - Nolo California Rent Control Guide
   - California Civil Code §1947.12
@@ -97,52 +97,58 @@ The system uses ONE shared vector store (`housing-justice-knowledge-base`) for a
 │  vector_store_name: "housing-justice-knowledge-base"           │
 └─────────────────────────────────────────────────────────────────┘
                               │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    ANALYZE WORKFLOW                             │
-│  /demo/analyze or /camelbackventures-product-demo/analyze      │
-│         │                                                       │
-│         ▼                                                       │
-│  /api/analyze                                                   │
-│         │                                                       │
-│         ├──► Reads vector_store_id from database               │
-│         ├──► Attaches to Responses API via file_search tool   │
-│         └──► GPT-4o searches sample notices for comparison     │
-└─────────────────────────────────────────────────────────────────┘
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+┌─────────────────────────────┐ ┌─────────────────────────────┐
+│      ANALYZE WORKFLOW       │ │      GENERATE WORKFLOW      │
+│  /api/analyze               │ │  /api/generate              │
+│         │                   │ │         │                   │
+│  Responses API              │ │  Responses API              │
+│  + file_search tool         │ │  + file_search tool         │
+│  + input_file (user PDF)    │ │                             │
+│         │                   │ │         │                   │
+│  Compares user notice       │ │  References sample notices  │
+│  against samples            │ │  for proper formatting      │
+└─────────────────────────────┘ └─────────────────────────────┘
 ```
 
 ### Database Tables
 - **`knowledge_base_vector_store`** - Stores the single global vector store ID
 - **`knowledge_base_files`** - Tracks individual files uploaded to the knowledge base
+- **`user_vector_stores`** - Per-user vector stores for generated notices
+- **`notice_files`** - Tracks generated notice files per user
 
 ## OpenAI APIs Used
 
-### Responses API (Analyze Route)
-The analyze route uses the new OpenAI Responses API (replacement for deprecated Assistants API):
-- **`openai.responses.create()`** - Main API call for document analysis
-- **`input_file` type** - Passes uploaded file IDs directly to GPT-4o for native PDF processing
+### Responses API (Both Routes)
+Both analyze and generate routes use the new OpenAI Responses API (replacement for deprecated Assistants API):
+
+**Common Features:**
+- **`openai.responses.create()`** - Main API call
 - **`file_search` tool** - Searches the knowledge base vector store for sample notices
 - **`vector_store_ids`** - Attaches the admin-uploaded knowledge base to enable semantic search
 - **`instructions` parameter** - System-level instructions including real-time legal references
+
+**Analyze Route Specific:**
+- **`input_file` type** - Passes uploaded file IDs directly to GPT-4o for native PDF processing
 - **`text.format.type: 'json_object'`** - Structured JSON output for defects and compliant elements
+
+**Generate Route Specific:**
+- No input files (generates new content based on form data)
+- Returns plain text notice content
 
 ### Files API
 - **Document Upload** - PDFs uploaded via `/api/file-upload` with `purpose: 'user_data'`
 - **Knowledge Base Upload** - PDFs uploaded via `/api/admin/knowledgebase-upload` with `purpose: 'assistants'`
+- **Generated Notice Storage** - Generated PDFs uploaded with `purpose: 'assistants'` for per-user storage
 - **File References** - File IDs passed to Responses API for native processing
 
 ### Vector Stores
 - **Knowledge Base Vector Store** - Single global store named `housing-justice-knowledge-base`
   - Admin uploads sample PDFs via `/admin-knowledgebase-addition`
-  - Analyze route searches these samples via `file_search` tool
-  - Semantic search finds similar sample documents for comparison
+  - Both analyze and generate routes search these samples via `file_search` tool
+  - Semantic search finds similar sample documents for comparison/reference
 - **Per-User Vector Stores** - Generate route persists generated notices (currently using shared user ID 'abc')
-
-### Chat Completions API (Generate Route)
-The generate route uses Chat Completions API with:
-- Vector store context retrieval from knowledge base
-- Real-time legal reference fetching from 3 authoritative sources
-- Temperature 0.3 for consistent output
 
 ## Real-Time Legal Reference Fetching
 Both analyze and generate routes dynamically fetch current legal statutes from 3 authoritative sources:
@@ -172,17 +178,16 @@ Both analyze and generate routes dynamically fetch current legal statutes from 3
 * ✅ PDF generation is fully functional (PDFKit)
 * ✅ Download button works and serves real PDFs
 * ✅ Owner occupied field added to all 4 demo routes
-* ✅ Generate route fully AI-powered with GPT-4o, vector stores, and web references
+* ✅ Generate route fully AI-powered with GPT-4o via Responses API
 * ✅ Analyze route fully AI-powered with GPT-4o via Responses API
 * ✅ Native PDF processing via OpenAI file uploads (no client-side text extraction needed)
-* ✅ file_search tool integration - searches admin-uploaded sample notices
-* ✅ Admin knowledge base upload connected to analyze route
+* ✅ file_search tool integration for both analyze and generate routes
+* ✅ Admin knowledge base upload connected to both analyze and generate routes
 * ✅ Real-time web scraping of 3 legal reference URLs for current law compliance checking
 * ✅ Legal checks data structure with 10 predefined compliance checks
-* ✅ Migrated from deprecated Assistants API to Responses API
+* ✅ Both routes migrated from deprecated Assistants API to Responses API
 
 ### TODO - High Priority
 * **Add AI Analysis Disclaimer** - Display warning: "This is an initial AI review. Human legal review is required."
 * **User Authentication** - Login system to support per-user file storage (currently all users share 'abc' ID)
 * **Document Type Configurability** - Allow switching between different notice types (currently hardcoded to "3-day eviction notice")
-* **Migrate Generate Route to Responses API** - Update generate endpoint to use Responses API for consistency
